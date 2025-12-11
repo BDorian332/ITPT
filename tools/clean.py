@@ -12,15 +12,16 @@ def clean_generated_models():
         models_dir.mkdir(parents=True, exist_ok=True)
 
 def clean_build_artifacts():
+    # Python build artifacts
     for d in ["build", "dist"]:
         path = PROJECT_ROOT / d
         if path.exists():
             shutil.rmtree(path)
-
     for path in PROJECT_ROOT.glob("*.egg-info"):
         if path.is_dir():
             shutil.rmtree(path)
 
+    # PyInstaller outputs
     gui_build = PROJECT_ROOT / "gui" / "build"
     gui_dist = PROJECT_ROOT / "gui" / "dist"
     for path in [gui_build, gui_dist]:

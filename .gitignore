@@ -1,0 +1,9 @@
+# Python build artifacts
+build/
+dist/
+*.egg-info/
+
+# PyInstaller outputs
+gui/build/
+gui/dist/
+*.spec
