@@ -1,6 +1,6 @@
 # ITPT
 
-A Python library for converting images of phylogenetic trees into the Newick format.
+A Python library for converting phylogenetic tree images to Newick format.
 
 ## Project Structure
 
