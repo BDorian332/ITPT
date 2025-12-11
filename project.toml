@@ -1,0 +1,35 @@
+[build-system]
+requires = ["setuptools", "wheel", "build"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "itpt"
+version = "0"
+description = "A Python library for converting images of phylogenetic trees into the Newick format."
+authors = [
+    { name = "Barrère Dorian", email = "barreredorian332@gmail.com" },
+    { name = "Accini Arthur", email = "acciniarth@cy-tech.fr" },
+    { name = "Chamaillard Lucas", email = "lchamaillard.lucas@gmail.com" },
+    { name = "Reyne Matteo", email = "reynematte@cy-tech.fr" }
+]
+dependencies = []
+
+[project.optional-dependencies]
+gui = ["tkinter", "pyinstaller"]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["itpt"]
+
+[tool.setuptools.package-data]
+"itpt" = ["_data/**/*"]
+
+[tool.poetry.scripts]
+itpt-build = "tools.build:main"
+itpt-clean = "tools.clean:main"
+itpt-generate-models = "tools.generate_models:main"
+itpt-run = "tools.run:main"
+
+[tool.poetry.dev-dependencies]
+nbconvert = "*"
+nbformat = "*"
