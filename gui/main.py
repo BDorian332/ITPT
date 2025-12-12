@@ -2,6 +2,7 @@ import os
 import tkinter as tk
 from tkinter import ttk, filedialog, messagebox
 from pathlib import Path
+from PIL import Image, ImageTk
 
 MODELS = ["model_a", "model_b", "model_c"]  # TODO
 
@@ -68,7 +69,7 @@ class ITPTGUI:
         path = self.input_entry.get()
         if path and path.lower().endswith((".png", ".gif", ".pgm", ".ppm")):
             try:
-                self.preview_image = tk.PhotoImage(file=path)
+                self.preview_image = Image.open(path)
             except Exception:
                 self.preview_image = None
         else:
@@ -85,19 +86,27 @@ class ITPTGUI:
 
         canvas_w = self.preview_canvas.winfo_width()
         canvas_h = self.preview_canvas.winfo_height()
-        img_w = self.preview_image.width()
-        img_h = self.preview_image.height()
 
-        ratio_w = img_w / canvas_w
-        ratio_h = img_h / canvas_h
-        ratio = max(ratio_w, ratio_h, 1)
+        img_w = self.preview_image.width
+        img_h = self.preview_image.height
 
-        if ratio > 1:
-            self.tk_image = self.preview_image.subsample(int(ratio), int(ratio))
-        else:
-            self.tk_image = self.preview_image
+        ratio_w = canvas_w / img_w
+        ratio_h = canvas_h / img_h
+        ratio = min(ratio_w, ratio_h)
 
-        self.preview_canvas.create_image(canvas_w//2, canvas_h//2, image=self.tk_image, anchor="center")
+        new_w = max(1, int(img_w * ratio))
+        new_h = max(1, int(img_h * ratio))
+
+        resized = self.preview_image.resize((new_w, new_h))
+
+        self.tk_image = ImageTk.PhotoImage(resized)
+
+        self.preview_canvas.create_image(
+            canvas_w // 2,
+            canvas_h // 2,
+            image=self.tk_image,
+            anchor="center"
+        )
 
     def show_output(self, text: str):
         self.output_text.config(state="normal")
