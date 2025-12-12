@@ -1,3 +1,4 @@
+import os
 import sys
 import subprocess
 import argparse
@@ -21,7 +22,12 @@ def build_gui():
         print(f"GUI main.py not found at {GUI_MAIN}")
         return
 
-    add_data_option = f"{DATA_MODELS_DIR}/itpt/_data/models"
+    if os.name == "nt": # Windows
+        sep = ";"
+    else: # Linux / macOS
+        sep = ":"
+
+    add_data_option = f"{DATA_MODELS_DIR}{sep}_data/models"
 
     cmd = [
         "pyinstaller",
@@ -29,6 +35,7 @@ def build_gui():
         "--windowed",
         "--noconfirm",
         "--add-data", add_data_option,
+        "-n", "gui",
         str(GUI_MAIN)
     ]
 

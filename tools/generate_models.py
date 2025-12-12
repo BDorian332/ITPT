@@ -4,7 +4,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parents[1] / "dev" / "generator"))
 
-import generator
+from generator import *
 
 def main():
     parser = argparse.ArgumentParser(description="Generate ITPT models from notebooks")

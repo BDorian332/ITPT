@@ -34,7 +34,7 @@ root/
 
 ## Requirements
 
-- Python
+- Python (>=3.8,<3.14)
 - Poetry
 
 ## Usage
@@ -57,7 +57,7 @@ print(tree)
 ```bash
 poetry install
 poetry install --with gui # installs needed dependencies for the GUI
-poetry shell
+poetry env activate
 ```
 
 #### Generate Models from Notebooks
@@ -85,6 +85,10 @@ poetry run itpt-clean --build
 ```
 
 ```bash
+poetry run itpt-clean --run
+```
+
+```bash
 poetry run itpt-clean --all
 ```
 
@@ -100,10 +104,15 @@ poetry run itpt-build --lib
 poetry run itpt-build --gui
 ```
 
+#### Run GUI on-the-fly
+
+```bash
+poetry run itpt-run --gui
+```
+
 #### Adding a New Model
 
 1. Create a notebook in: notebooks/models/
-
 2. Tag the cells you want exported with:
 
 ```json

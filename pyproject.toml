@@ -12,10 +12,8 @@ authors = [
     { name = "Chamaillard Lucas", email = "lchamaillard.lucas@gmail.com" },
     { name = "Reyne Matteo", email = "reynematte@cy-tech.fr" }
 ]
+requires-python = ">=3.10,<3.14"
 dependencies = []
-
-[project.optional-dependencies]
-gui = ["tkinter", "pyinstaller"]
 
 [tool.setuptools.packages.find]
 where = ["."]
@@ -30,6 +28,17 @@ itpt-clean = "tools.clean:main"
 itpt-generate-models = "tools.generate_models:main"
 itpt-run = "tools.run:main"
 
-[tool.poetry.dev-dependencies]
-nbconvert = "*"
-nbformat = "*"
+[dependency-groups]
+build = [
+    "build"
+]
+lib = [
+    "nbconvert",
+    "nbformat"
+]
+gui = [
+    "pyinstaller (>=6.10)"
+]
+
+[tool.poetry.group.gui]
+optional = true

@@ -1,9 +1,12 @@
 # Python build artifacts
-build/
 dist/
 *.egg-info/
 
 # PyInstaller outputs
-gui/build/
-gui/dist/
+build/
+dist/
 *.spec
+
+# Python run artifacts
+__pycache__/
+**/__pycache__/
