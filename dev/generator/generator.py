@@ -49,6 +49,10 @@ def generate_model_from_notebook(nb_path: Path):
         return
 
     model_dir = DATA_MODELS_DIR / model_name.replace(" ", "_")
+
+    if model_dir.exists():
+        shutil.rmtree(model_dir)
+
     model_dir.mkdir(parents=True, exist_ok=True)
 
     code_file = model_dir / "code.py"
