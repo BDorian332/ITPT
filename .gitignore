@@ -10,3 +10,5 @@ dist/
 # Python run artifacts
 __pycache__/
 **/__pycache__/
+
+sandbox/
