@@ -3,14 +3,14 @@ import tkinter as tk
 from tkinter import ttk, filedialog, messagebox
 from pathlib import Path
 from PIL import Image, ImageTk
-
-MODELS = ["model_a", "model_b", "model_c"]  # TODO
+from itpt.models import get_list, get_model
 
 class ITPTGUI:
     def __init__(self, root):
         self.root = root
         self.root.title("ITPTGUI")
         self.root.geometry("900x700")
+        self.model_names = get_list()
 
         ttk.Label(root, text="Input image:").grid(row=0, column=0, sticky="w", padx=5, pady=5)
         self.input_entry = ttk.Entry(root)
@@ -24,8 +24,13 @@ class ITPTGUI:
         ttk.Button(root, text="Browse", command=self.browse_output).grid(row=1, column=2, padx=5, pady=5)
 
         ttk.Label(root, text="Select model:").grid(row=2, column=0, sticky="w", padx=5, pady=5)
-        self.model_var = tk.StringVar(value=MODELS[0])
-        ttk.Combobox(root, textvariable=self.model_var, values=MODELS, state="readonly").grid(row=2, column=1, sticky="ew", padx=5, pady=5)
+        if not self.model_names:
+            self.model_name_var = tk.StringVar(value="No models available")
+            self.model_combobox = ttk.Combobox(root, textvariable=self.model_name_var, values=self.model_names, state="disabled")
+        else:
+            self.model_name_var = tk.StringVar(value=self.model_names[0])
+            self.model_combobox = ttk.Combobox(root, textvariable=self.model_name_var, values=self.model_names, state="readonly")
+        self.model_combobox.grid(row=2, column=1, sticky="ew", padx=5, pady=5)
 
         ttk.Label(root, text="Image preview:").grid(row=3, column=0, columnspan=3, sticky="w", padx=5, pady=5)
         self.preview_canvas = tk.Canvas(root, bg="white")
@@ -117,20 +122,36 @@ class ITPTGUI:
     def convert(self):
         self.convert_button.config(state="disabled")
 
-        input_file = self.input_entry.get()
-        output_file = self.output_entry.get()
-        model = self.model_var.get()
+        input_file = self.input_entry.get().strip()
+        output_file = self.output_entry.get().strip()
+        model_name = self.model_name_var.get()
 
         if not input_file:
             messagebox.showerror("Error", "Please select an input file.")
             self.convert_button.config(state="normal")
             return
 
-        # TODO appel à ITPT
+        if model_name not in self.model_names:
+            messagebox.showerror("Error", "Please select a model.")
+            self.convert_button.config(state="normal")
+            return
 
-        self.show_output("test")
+        #model = get_model(model_name)
+        #model.load()
+        #tree = model.convert(input_file)
+        tree = "(A,B)"
 
-        messagebox.showinfo("Done", f"Generation finished using '{model}'.")
+        if output_file:
+            try:
+                with open(output_file, "w") as f:
+                    f.write(tree)
+                messagebox.showinfo("Done", f"Generation finished. Output written to:\n{output_file}")
+            except Exception as e:
+                messagebox.showerror("Error", f"Failed to write output file:\n{e}")
+        else:
+            messagebox.showinfo("Done", f"Generation finished using '{model_name}'.")
+
+        self.show_output(tree)
         self.convert_button.config(state="normal")
 
 if __name__ == "__main__":

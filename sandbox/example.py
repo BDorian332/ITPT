@@ -1,16 +1,16 @@
 from itpt.models import get_list, get_model
 
 def run_example():
-    models = get_list()
+    model_names = get_list()
     print("Available models:")
-    for name in models:
+    for name in model_names:
         print(f" - {name}")
 
-    if not models:
+    if not model_names:
         print("No models available.")
         return
 
-    model_name = models[0]
+    model_name = model_names[0]
     print(f"\nUsing model: {model_name}")
 
     model = get_model(model_name)

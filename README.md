@@ -46,8 +46,8 @@ root/
 ```python
 from itpt.models import get_list, get_model
 
-models = get_list()
-print(models)
+model_names = get_list()
+print(model_names)
 
 model = get_model("model_a")
 model.load()
