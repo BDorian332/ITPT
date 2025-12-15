@@ -1,6 +1,6 @@
 import importlib.util
 from importlib import resources
-from itpt.core.model import BaseModel
+from itpt.core import Model
 
 _REGISTRY = {}
 
@@ -36,7 +36,7 @@ def _scan_models():
 
         model_classes = [
             obj for obj in module.__dict__.values()
-            if isinstance(obj, type) and issubclass(obj, BaseModel) and obj is not BaseModel
+            if isinstance(obj, type) and issubclass(obj, Model) and obj is not Model
         ]
 
         if not model_classes:
@@ -46,10 +46,10 @@ def _scan_models():
 
 _scan_models()
 
-def list():
+def get_list():
     return list(_REGISTRY.keys())
 
-def get(name):
+def get_model(name):
     ModelClass = _REGISTRY.get(name)
     if ModelClass is None:
         raise ValueError(f"Model '{name}' not found. Available models: {list()}")

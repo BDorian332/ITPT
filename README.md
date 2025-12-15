@@ -21,15 +21,17 @@ root/
         main.py
     dev/
         notebooks/
-        generator/
+        generators/
             __init__.py
-            generator.py
+            generator_from_notebook.py
+    sandbox/
+        main.py
     tools/
         build.py
         clean.py
         generate_models.py
         run.py
-    project.toml
+    pyproject.toml
 ```
 
 ## Requirements
@@ -42,10 +44,14 @@ root/
 ### For Users
 
 ```python
-from itpt.models import list, get
+from itpt.models import get_list, get_model
 
-print(list())
-model = get("model_a")
+models = get_list()
+print(models)
+
+model = get_model("model_a")
+model.load()
+
 tree = model.convert("input.png")
 print(tree)
 ```
@@ -108,6 +114,12 @@ poetry run itpt-build --gui
 
 ```bash
 poetry run itpt-run --gui
+```
+
+#### Run Sandbox on-the-fly
+
+```bash
+poetry run itpt-run --sandbox
 ```
 
 #### Adding a New Model

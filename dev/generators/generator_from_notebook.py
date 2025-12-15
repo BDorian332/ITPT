@@ -61,7 +61,7 @@ def generate_model_from_notebook(nb_path: Path):
 
     print(f"Model '{model_name}' generated at {model_dir}")
 
-def generate_all():
+def generate_all_from_notebook():
     if not NOTEBOOKS_DIR.exists():
         print(f"Notebooks directory {NOTEBOOKS_DIR} does not exist!")
         return
