@@ -14,8 +14,8 @@ def clean_generated_models():
 
 def clean_build_artifacts():
     # Python build artifacts
-    for d in ["dist"]:
-        path = PROJECT_ROOT / d
+    dist = PROJECT_ROOT / "dist"
+    for path in [dist]:
         if path.exists():
             shutil.rmtree(path)
     for path in PROJECT_ROOT.glob("*.egg-info"):
@@ -27,6 +27,9 @@ def clean_build_artifacts():
     gui_dist = PROJECT_ROOT / "dist"
     for path in [gui_build, gui_dist]:
         if path.exists():
+            shutil.rmtree(path)
+    for path in PROJECT_ROOT.glob("*.spec"):
+        if path.is_file():
             shutil.rmtree(path)
     print("Cleaned.")
 

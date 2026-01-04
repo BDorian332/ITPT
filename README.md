@@ -66,7 +66,15 @@ print(tree)
 ```bash
 poetry install
 poetry install --with gui # installs needed dependencies for the GUI
-poetry env activate
+
+{
+poetry env activate # prints the activate command of the virtual environment to the console
+jupyter notebook # to run the Jupyter notebook
+}
+OR
+{
+poetry run jupyter notebook # to directly run the Jupyter notebook with the Poetry virtual environment
+}
 ```
 
 #### Generate Models from Notebooks

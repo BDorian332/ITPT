@@ -1,3 +1,7 @@
+poetry.lock
+.ipynb_checkpoints
+sandbox/
+
 # Python build artifacts
 dist/
 *.egg-info/
@@ -9,6 +13,3 @@ dist/
 
 # Python run artifacts
 __pycache__/
-**/__pycache__/
-
-sandbox/
