@@ -20,7 +20,10 @@ root/
     gui/
         main.py
     dev/
-        notebooks/
+	_datasets/
+		...
+        _notebooks/
+		...
         generators/
             __init__.py
             generator_from_notebook.py
