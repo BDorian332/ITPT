@@ -3,7 +3,7 @@ import json
 from nbconvert import PythonExporter
 from pathlib import Path
 
-NOTEBOOKS_DIR = Path(__file__).parents[1] / "notebooks"
+NOTEBOOKS_DIR = Path(__file__).parents[1] / "_notebooks"
 DATA_MODELS_DIR = Path(__file__).parents[2] / "itpt" / "_data" / "models"
 
 EXPORT_TAG = "export"

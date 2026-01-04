@@ -39,8 +39,8 @@ def clean_run_artifacts():
 
 def main():
     parser = argparse.ArgumentParser(description="Clean ITPT generated files and build artifacts")
-    parser.add_argument("--models", action="store_true", help="Clean generated models in _data")
-    parser.add_argument("--build", action="store_true", help="Clean build/dist/egg-info artifacts")
+    parser.add_argument("--models", action="store_true", help="Clean generated models in itpt/_data")
+    parser.add_argument("--build", action="store_true", help="Clean build artifacts")
     parser.add_argument("--run", action="store_true", help="Clean Python run artifacts")
     parser.add_argument("--all", action="store_true", help="Clean everything")
     args = parser.parse_args()
