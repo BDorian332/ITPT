@@ -38,12 +38,14 @@ lib = [
     "notebook",
     "ipykernel",
     "ipywidgets",
+    "tqdm",
     "matplotlib",
     "opencv-python",
     "torch",
     "easyocr",
     "paddlepaddle",
-    "paddleocr"
+    "paddleocr",
+    "scikit-learn"
 ]
 gui = [
     "pyinstaller"
