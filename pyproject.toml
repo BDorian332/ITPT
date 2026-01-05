@@ -37,10 +37,13 @@ lib = [
     "nbformat",
     "notebook",
     "ipykernel",
+    "ipywidgets",
     "matplotlib",
     "opencv-python",
     "torch",
-    "easyocr"
+    "easyocr",
+    "paddlepaddle",
+    "paddleocr"
 ]
 gui = [
     "pyinstaller"
