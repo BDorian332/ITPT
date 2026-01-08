@@ -1,5 +1,5 @@
 poetry.lock
-.ipynb_checkpoints
+*.ipynb_checkpoints
 sandbox/
 
 # Python build artifacts
@@ -13,3 +13,6 @@ dist/
 
 # Python run artifacts
 __pycache__/
+
+*.png
+!dev/_datasets/**/*.png
