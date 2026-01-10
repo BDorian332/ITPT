@@ -39,7 +39,7 @@ root/
 
 ## Requirements
 
-- Python (>=3.8,<3.14)
+- Python (>=3.13)
 - Poetry
 
 ## Usage
