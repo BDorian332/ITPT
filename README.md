@@ -68,7 +68,7 @@ poetry install
 poetry install --with gui # installs needed dependencies for the GUI
 
 {
-poetry env activate # prints the activate command of the virtual environment to the console
+eval $(poetry env activate) # to activate the virtual environment
 jupyter notebook # to run the Jupyter notebook
 }
 OR
