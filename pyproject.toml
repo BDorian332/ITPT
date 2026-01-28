@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools", "wheel", "build"]
+requires = ["setuptools"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -17,7 +17,7 @@ dependencies = []
 
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["itpt"]
+include = ["itpt*"]
 
 [tool.setuptools.package-data]
 "itpt" = ["_data/**/*"]
