@@ -55,8 +55,8 @@ def generate_model_from_notebook(nb_path: Path):
 
     model_dir.mkdir(parents=True, exist_ok=True)
 
-    code_file = model_dir / "code.py"
-    with open(code_file, "w", encoding="utf-8") as f:
+    model_file = model_dir / "model.py"
+    with open(model_file, "w", encoding="utf-8") as f:
         f.write(code)
 
     print(f"Model '{model_name}' generated at {model_dir}")

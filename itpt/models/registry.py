@@ -17,13 +17,13 @@ def _scan_models():
         model_package = f"{models_package}.{model_name}"
 
         try:
-            with resources.path(model_package, "code.py") as code_file:
-                code_file_path = str(code_file)
+            with resources.path(model_package, "model.py") as model_file:
+                model_file_path = str(model_file)
         except FileNotFoundError:
             continue
 
         module_name = "_dynamic_" + model_name
-        spec = importlib.util.spec_from_file_location(module_name, code_file_path)
+        spec = importlib.util.spec_from_file_location(module_name, model_file_path)
         if spec is None or spec.loader is None:
             continue
 

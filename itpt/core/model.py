@@ -18,7 +18,7 @@ class Model(ABC):
         pass
 
     @abstractmethod
-    def load(self, weights_path = None):
+    def load(self, weights_path=None):
         pass
 
     def ensure_loaded(self):
