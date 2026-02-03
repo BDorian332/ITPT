@@ -1,8 +1,7 @@
 *.ipynb_checkpoints
 sandbox/
-*.png
-!dev/_datasets/**/*.png
-dev/_notebooks/outputs
+dev/_datasets/
+dev/_notebooks/outputs/
 
 # Python build artifacts
 dist/
