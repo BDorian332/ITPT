@@ -10,11 +10,11 @@ def _scan_models():
 
     models_package = "itpt._data.models"
 
-    for model_name in resources.contents(models_package):
-        if resources.is_resource(models_package, model_name):
+    for model_key in resources.contents(models_package):
+        if resources.is_resource(models_package, model_key):
             continue
 
-        model_package = f"{models_package}.{model_name}"
+        model_package = f"{models_package}.{model_key}"
 
         try:
             with resources.path(model_package, "model.py") as model_file:
@@ -22,7 +22,7 @@ def _scan_models():
         except FileNotFoundError:
             continue
 
-        module_name = "_dynamic_" + model_name
+        module_name = "_dynamic_" + model_key
         spec = importlib.util.spec_from_file_location(module_name, model_file_path)
         if spec is None or spec.loader is None:
             continue
@@ -31,7 +31,7 @@ def _scan_models():
         try:
             spec.loader.exec_module(module)
         except Exception as e:
-            print(f"Failed to load model '{model_name}': {e}")
+            print(f"Failed to load model '{model_key}': {e}")
             continue
 
         model_classes = [
@@ -40,6 +40,19 @@ def _scan_models():
         ]
 
         if not model_classes:
+            continue
+
+        ModelClass = model_classes[0]
+
+        try:
+            instance = ModelClass()
+        except Exception as e:
+            print(f"Failed to instantiate model '{model_key}': {e}")
+            continue
+
+        model_name = instance._metadata.get("name")
+        if not model_name:
+            print(f"Model in '{model_name}' has no metadata name")
             continue
 
         _REGISTRY[model_name] = model_classes[0]

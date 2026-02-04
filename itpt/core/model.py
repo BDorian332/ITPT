@@ -2,11 +2,11 @@ from abc import ABC, abstractmethod
 
 class Model(ABC):
     def __init__(self):
-        self._loaded: bool = False
-        self._metadata: Dict[str, Any] = {
+        self._loaded = False
+        self._metadata = {
             "name": "Unknown",
             "description": "No description.",
-            "input_spec": "any",
+            "input_spec": "Unknown",
             "version": 0
         }
 
@@ -14,11 +14,7 @@ class Model(ABC):
         return self._metadata
 
     @abstractmethod
-    def get_input_spec(self):
-        pass
-
-    @abstractmethod
-    def load(self, weights_path=None):
+    def load(self):
         pass
 
     def ensure_loaded(self):
@@ -26,5 +22,5 @@ class Model(ABC):
             raise RuntimeError("Model must be loaded before inference.")
 
     @abstractmethod
-    def convert(self, image):
+    def convert(self, image_path):
         pass

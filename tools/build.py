@@ -11,7 +11,7 @@ DATA_MODELS_DIR = PROJECT_ROOT / "itpt" / "_data" / "models"
 def build_lib():
     print("=== Building Python library ===")
     try:
-        subprocess.run([sys.executable, "-m", "build"], check=True)
+        subprocess.run(["poetry", "build"], check=True)
     except subprocess.CalledProcessError as e:
         print(f"Failed to build library: {e}")
         sys.exit(1)

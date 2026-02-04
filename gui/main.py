@@ -136,10 +136,10 @@ class ITPTGUI:
             self.convert_button.config(state="normal")
             return
 
-        #model = get_model(model_name)
-        #model.load()
-        #tree = model.convert(input_file)
-        tree = "(A,B)"
+        model = get_model(model_name)
+        model.load()
+        tree = model.convert(input_file)
+        #tree = "(A,B)"
 
         if output_file:
             try:

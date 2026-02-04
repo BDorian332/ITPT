@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools"]
+requires = ["setuptools", "torch"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -29,10 +29,7 @@ itpt-generate-models = "tools.generate_models:main"
 itpt-run = "tools.run:main"
 
 [dependency-groups]
-build = [
-    "build"
-]
-lib = [
+dev = [
     "nbconvert",
     "nbformat",
     "notebook",
@@ -42,13 +39,17 @@ lib = [
     "matplotlib",
     "opencv-python",
     "torch",
+    "torchvision",
+    "torchaudio",
     "easyocr",
-    "paddlepaddle",
-    "paddleocr",
-    "scikit-learn"
+    "paddlepaddle==3.2.2",
+    "paddleocr==3.3.3",
+    "scikit-learn",
+    "numpy"
 ]
 gui = [
-    "pyinstaller"
+    "pyinstaller",
+    "pillow",
 ]
 
 [tool.poetry.group.gui]
