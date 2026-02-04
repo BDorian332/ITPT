@@ -1,5 +1,7 @@
 import os
 import tkinter as tk
+import threading
+import time
 from tkinter import ttk, filedialog, messagebox
 from pathlib import Path
 from PIL import Image, ImageTk
@@ -35,7 +37,7 @@ class ITPTGUI:
         ttk.Label(root, text="Image preview:").grid(row=3, column=0, columnspan=3, sticky="w", padx=5, pady=5)
         self.preview_canvas = tk.Canvas(root, bg="white")
         self.preview_canvas.grid(row=4, column=0, columnspan=3, sticky="nsew", padx=5, pady=5)
-        self.preview_canvas.bind("<Configure>", self.resize_preview)
+        self.preview_canvas.bind("<Configure>", self.redraw_preview)
         self.preview_image = None
         self.tk_image = None
 
@@ -53,6 +55,13 @@ class ITPTGUI:
 
         self.convert_button = ttk.Button(root, text="Convert", command=self.convert)
         self.convert_button.grid(row=7, column=0, columnspan=3, padx=5, pady=5)
+
+        self.progress = ttk.Progressbar(
+            root,
+            mode="indeterminate"
+        )
+        self.progress.grid(row=8, column=0, columnspan=3, sticky="ew", padx=5, pady=5)
+        self.progress.grid_remove()
 
         root.grid_columnconfigure(1, weight=1)
         root.grid_rowconfigure(4, weight=1)
@@ -81,10 +90,7 @@ class ITPTGUI:
             self.preview_image = None
         self.redraw_preview()
 
-    def resize_preview(self, event):
-        self.redraw_preview()
-
-    def redraw_preview(self):
+    def redraw_preview(self, event=None):
         self.preview_canvas.delete("all")
         if not self.preview_image:
             return
@@ -119,40 +125,45 @@ class ITPTGUI:
         self.output_text.insert(tk.END, text)
         self.output_text.config(state="disabled")
 
+    def _run_conversion(self):
+        try:
+            input_file = self.input_entry.get().strip()
+            output_file = self.output_entry.get().strip()
+            model_name = self.model_name_var.get()
+
+            if not input_file or model_name not in self.model_names:
+                raise ValueError("Invalid input or model")
+
+            model = get_model(model_name)
+            model.load()
+            tree = model.convert(input_file)
+
+            #time.sleep(5)
+
+            if output_file:
+                with open(output_file, "w") as f:
+                    f.write(tree)
+
+            self.root.after(0, lambda: self.show_output(tree))
+            self.root.after(0, lambda: messagebox.showinfo("Done", "Generation finished"))
+
+        except Exception as e:
+            err = str(e)
+            self.root.after(0, lambda: messagebox.showerror("Error", err))
+
+        finally:
+            self.root.after(0, self.progress.stop)
+            self.root.after(0, self.progress.grid_remove)
+            self.root.after(0, lambda: self.convert_button.config(state="normal"))
+
     def convert(self):
         self.convert_button.config(state="disabled")
 
-        input_file = self.input_entry.get().strip()
-        output_file = self.output_entry.get().strip()
-        model_name = self.model_name_var.get()
+        self.progress.grid()
+        self.progress.start(10)
 
-        if not input_file:
-            messagebox.showerror("Error", "Please select an input file.")
-            self.convert_button.config(state="normal")
-            return
-
-        if model_name not in self.model_names:
-            messagebox.showerror("Error", "Please select a model.")
-            self.convert_button.config(state="normal")
-            return
-
-        model = get_model(model_name)
-        model.load()
-        tree = model.convert(input_file)
-        #tree = "(A,B)"
-
-        if output_file:
-            try:
-                with open(output_file, "w") as f:
-                    f.write(tree)
-                messagebox.showinfo("Done", f"Generation finished. Output written to:\n{output_file}")
-            except Exception as e:
-                messagebox.showerror("Error", f"Failed to write output file:\n{e}")
-        else:
-            messagebox.showinfo("Done", f"Generation finished using '{model_name}'.")
-
-        self.show_output(tree)
-        self.convert_button.config(state="normal")
+        thread = threading.Thread(target=self._run_conversion)
+        thread.start()
 
 if __name__ == "__main__":
     root = tk.Tk()

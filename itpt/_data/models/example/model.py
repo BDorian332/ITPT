@@ -11,11 +11,11 @@ class ExampleModel(Model):
         print("get_input_spec called")
         return "get_input_spec"
 
-    def load(self, weights_path=None):
-        print(f"load called with weights_path={weights_path}")
+    def load(self):
+        print("load called")
         self._loaded = True
 
     def convert(self, image):
         self.ensure_loaded()
         print(f"convert called on image={image}")
-        return "convert"
+        return "newick"
