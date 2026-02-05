@@ -8,7 +8,7 @@ Construit un Newick (avec longueurs de branches RELATIVES) à partir de 3 listes
 - internals : [(x,y), ...]
 - corners   : [(x,y), ...]
 
-Hypothèses (comme ton ancien script) :
+Hypothèses :
 - arbre vertical
 - y sert uniquement à regrouper les enfants via des "intervals" définis par les corners
 - x sert à calculer les longueurs de branches (horizontales)
@@ -25,18 +25,17 @@ from typing import List, Tuple, Optional
 
 
 def build_newick(
-    leaves: List[Tuple[float, float]],
-    internals: List[Tuple[float, float]],
-    corners: List[Tuple[float, float]],
-    *,
-    x_tol: float = 18.0,
-    y_tol: float = 14.0,
+    leaves: List[Tuple[int, int]],
+    internals: List[Tuple[int, int]],
+    corners: List[Tuple[int, int]],
+    x_tol: float = 8.0,
+    y_tol: float = 8.0,
     leaf_names: Optional[List[str]] = None,
     decimals: int = 9
 ) -> Optional[str]:
     """
     Args:
-        leaves, internals, corners: list of (x,y)
+        leaves, internals, corners: list of (x,y) en pixels (int)
         x_tol: tolérance en x pour associer 2 corners à un internal
         y_tol: marge autour de l'intervalle [y_corner1, y_corner2] pour capturer les clusters
         leaf_names: noms des feuilles (sinon A,B,C...)
@@ -51,40 +50,63 @@ def build_newick(
     def fmt_len(L: float) -> str:
         return f"{L:.{decimals}f}"
 
-    def branch_len(x_child: float, x_parent: float) -> float:
-        return abs(float(x_child) - float(x_parent))
+    def branch_len(x_child: int, x_parent: int) -> float:
+        return float(abs(int(x_child) - int(x_parent)))
+
+    if not leaves or not internals or not corners:
+        return None
 
     # --------------------------------------------------------
-    # 1) Ordonner et nommer les feuilles
+    # Ordonner et nommer les feuilles
     # --------------------------------------------------------
-    leaves_sorted = sorted([(float(x), float(y)) for (x, y) in leaves], key=lambda p: p[1], reverse=True)
+    # Tri par y décroissant (haut -> bas)
+    leaves_sorted = sorted(leaves, key=lambda p: p[1], reverse=True)
+    n_leaves = len(leaves_sorted)
+
+    def gen_name_stream():
+        """Génère A,B,C... puis L26,L27... (infini)."""
+        i = 0
+        while True:
+            if i < 26:
+                yield chr(ord("A") + i)
+            else:
+                yield f"L{i}"
+            i += 1
 
     if leaf_names is None:
         leaf_names = []
-        for i in range(len(leaves_sorted)):
-            leaf_names.append(chr(ord("A") + i) if i < 26 else f"L{i}")
+        g = gen_name_stream()
+        for _ in range(n_leaves):
+            leaf_names.append(next(g))
+    else:
+        leaf_names = list(leaf_names)
 
-    if len(leaf_names) != len(leaves_sorted):
-        raise ValueError("leaf_names length must match number of leaves")
+        if len(leaf_names) < n_leaves:
+            used = set(leaf_names)
+            g = gen_name_stream()
+            while len(leaf_names) < n_leaves:
+                cand = next(g)
+                if cand in used:
+                    continue
+                leaf_names.append(cand)
+                used.add(cand)
+        elif len(leaf_names) > n_leaves:
+            leaf_names = leaf_names[:n_leaves]
 
     xs = sorted([x for (x, _y) in leaves_sorted])
-    leaf_tip_x = xs[len(xs) // 2]  # médiane
+    leaf_tip_x = int(xs[len(xs) // 2])  # médiane (int)
 
-    # clusters = sous-arbres actifs
-    # - y : position (pour sélectionner par intervalle vertical)
-    # - x : x "du nœud représentant" ce cluster (pour les longueurs)
-    # - nw: newick du cluster SANS ';'
     clusters = []
     for name, (_x, y) in zip(leaf_names, leaves_sorted):
-        clusters.append({"y": float(y), "x": float(leaf_tip_x), "nw": name})
+        clusters.append({"y": int(y), "x": int(leaf_tip_x), "nw": str(name)})
 
     # --------------------------------------------------------
-    # 2) Préparer corners
+    # Préparer corners
     # --------------------------------------------------------
-    corners_f = [(float(x), float(y)) for (x, y) in corners]
+    corners_int = corners
 
-    def find_two_corners_for_node(xn: float, yn: float):
-        cand = [(x, y) for (x, y) in corners_f if abs(x - xn) <= x_tol]
+    def find_two_corners_for_node(xn: int, yn: int):
+        cand = [(x, y) for (x, y) in corners_int if abs(int(x) - int(xn)) <= x_tol]
         if len(cand) < 2:
             return None
 
@@ -101,22 +123,23 @@ def build_newick(
         return cand[0], cand[1]
 
     # --------------------------------------------------------
-    # 3) Fusion bottom-up
+    # Fusion bottom-up
     # --------------------------------------------------------
-    internals_sorted = sorted([(float(x), float(y)) for (x, y) in internals], key=lambda p: p[0], reverse=True)
+    # Tri par x décroissant (droite -> gauche) pour remonter
+    internals_sorted = sorted(internals, key=lambda p: p[0], reverse=True)
 
     for xn, yn in internals_sorted:
-        found = find_two_corners_for_node(xn, yn)
+        found = find_two_corners_for_node(int(xn), int(yn))
         if found is None:
             continue
 
         (x1, y1), (x2, y2) = found
         y_low, y_high = (y1, y2) if y1 <= y2 else (y2, y1)
 
-        low = y_low - y_tol
-        high = y_high + y_tol
+        low = int(y_low - y_tol)
+        high = int(y_high + y_tol)
 
-        inside_idx = [i for i, c in enumerate(clusters) if low <= c["y"] <= high]
+        inside_idx = [i for i, c in enumerate(clusters) if low <= int(c["y"]) <= high]
         if len(inside_idx) < 2:
             continue
 
@@ -125,36 +148,35 @@ def build_newick(
 
         parts = []
         for c in inside:
-            L = branch_len(c["x"], xn)
+            L = branch_len(int(c["x"]), int(xn))
             parts.append(f"{c['nw']}:{fmt_len(L)}")
 
         merged_nw = "(" + ",".join(parts) + ")"
-
-        merged_cluster = {"y": float(yn), "x": float(xn), "nw": merged_nw}
+        merged_cluster = {"y": int(yn), "x": int(xn), "nw": merged_nw}
 
         clusters = [c for j, c in enumerate(clusters) if j not in inside_idx]
         clusters.append(merged_cluster)
         clusters.sort(key=lambda c: c["y"], reverse=True)
 
     # --------------------------------------------------------
-    # 4) Finalisation
+    # Finalisation
     # --------------------------------------------------------
     if len(clusters) == 1:
         return clusters[0]["nw"] + ";"
 
-    root_x = min([x for (x, _y) in internals_sorted] + [x for (x, _y) in corners_f])
+    root_x = min([x for (x, _y) in internals_sorted] + [x for (x, _y) in corners_int])
 
     clusters.sort(key=lambda c: c["y"], reverse=True)
     parts = []
     for c in clusters:
-        L = branch_len(c["x"], root_x)
+        L = branch_len(int(c["x"]), int(root_x))
         parts.append(f"{c['nw']}:{fmt_len(L)}")
 
     return "(" + ",".join(parts) + ");"
 
 
 # ============================================================
-# MAIN (TEST)
+# MAIN
 # ============================================================
 def main():
     import json
@@ -178,9 +200,9 @@ def main():
         for item in data:
             image = item.get("image", None)
 
-            leaves = [(float(x), float(y)) for x, y in item.get("leaf", [])]
-            internals = [(float(x), float(y)) for x, y in item.get("node", [])]
-            corners = [(float(x), float(y)) for x, y in item.get("corner", [])]
+            leaves = [(int(round(float(x))), int(round(float(y)))) for x, y in item.get("leaf", [])]
+            internals = [(int(round(float(x))), int(round(float(y)))) for x, y in item.get("node", [])]
+            corners = [(int(round(float(x))), int(round(float(y)))) for x, y in item.get("corner", [])]
 
             newick = build_newick(
                 leaves,
@@ -189,9 +211,9 @@ def main():
                 x_tol=args.x_tol,
                 y_tol=args.y_tol,
                 decimals=args.decimals,
+                # leaf_names=...  (si tu veux le passer depuis ailleurs)
             )
 
-            # one JSON per line
             line = {
                 "image": image,
                 "newick": newick,
@@ -200,6 +222,7 @@ def main():
             fout.write(json.dumps(line, ensure_ascii=False) + "\n")
 
     print(f"Done. Wrote {len(data)} lines to {args.out_txt}")
+
 
 if __name__ == "__main__":
     main()
