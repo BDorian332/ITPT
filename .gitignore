@@ -2,6 +2,7 @@
 sandbox/
 dev/_datasets/
 dev/_notebooks/outputs/
+weights/
 
 # Python build artifacts
 dist/
