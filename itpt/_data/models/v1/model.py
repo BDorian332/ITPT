@@ -37,6 +37,7 @@ class v1(Model):
         cropped_tree = self.extract_tree(img_rgb)
         cleaned_tree = self.clean_tree(cropped_tree)
         #nodes, corners = self.detect_nodes(cleaned_tree)
+        #nodes, corners = self.correct_nodes(nodes, corners)
         texts = self.detect_texts(img_rgb)
         newick = self.build_newick(nodes, corners, texts)
 
@@ -67,10 +68,13 @@ class v1(Model):
         print("Detecting nodes...")
         #nodes, corners = ?
         #print(f"Detected: {len(nodes)} nodes, {len(corners)} corners")
+        return nodes, corners
+
+    def correct_nodes(self, nodes, corners):
         print("Correcting nodes...")
         #nodes, corners = ?
         #print(f"Now: {len(nodes)} nodes, {len(corners)} corners")
-        return [], []
+        return nodes, corners
 
     def detect_texts(self, img_rgb):
         print("Detecting texts...")
