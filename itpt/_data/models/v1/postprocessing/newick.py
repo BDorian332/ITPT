@@ -226,7 +226,7 @@ def build_newick(
     margin: float = 0.5,
     texts: List[dict] = [],
     max_distance: float = 20
-) -> Optional["Newick"]:
+) -> Optional[Newick]:
     """
     Build a Newick tree from nodes and corners.
 
