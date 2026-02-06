@@ -3,6 +3,7 @@ from importlib import resources
 from itpt.core import Model
 
 _REGISTRY = {}
+BLACKLISTED_MODELS = []
 
 def _scan_models():
     global _REGISTRY
@@ -11,25 +12,13 @@ def _scan_models():
     models_package = "itpt._data.models"
 
     for model_key in resources.contents(models_package):
-        if resources.is_resource(models_package, model_key):
+        if resources.is_resource(models_package, model_key) or model_key in BLACKLISTED_MODELS:
             continue
 
         model_package = f"{models_package}.{model_key}"
 
         try:
-            with resources.path(model_package, "model.py") as model_file:
-                model_file_path = str(model_file)
-        except FileNotFoundError:
-            continue
-
-        module_name = "_dynamic_" + model_key
-        spec = importlib.util.spec_from_file_location(module_name, model_file_path)
-        if spec is None or spec.loader is None:
-            continue
-
-        module = importlib.util.module_from_spec(spec)
-        try:
-            spec.loader.exec_module(module)
+            module = importlib.import_module(f"{model_package}.model")
         except Exception as e:
             print(f"Failed to load model '{model_key}': {e}")
             continue

@@ -45,11 +45,12 @@ dev = [
     "paddlepaddle==3.2.2",
     "paddleocr==3.3.3",
     "scikit-learn",
-    "numpy"
+    "numpy",
+    "python-doctr"
 ]
 gui = [
     "pyinstaller",
-    "pillow",
+    "pillow"
 ]
 
 [tool.poetry.group.gui]

@@ -2,12 +2,12 @@ import os
 import torch
 import cv2
 from itpt.core import Model
-from itpt._data.models.v0.preprocess.denoising import denoise_image_tensor, load_and_preprocess_image, DenoisingModel, img_to_tensor, tensor_to_gray
-from itpt._data.models.v0.preprocess.cropping import extract_tree_crop_from_image, CroppingModel
-from itpt._data.models.v0.preprocess.labelling import extract_ordered_texts_from_image, LabellingModel, tensor_to_np
-from itpt._data.models.v0.nodesdetection.infer_ts_cpu import load_ts_model, infer_image
-from itpt._data.models.v0.postprocess.corrector import correction
-from itpt._data.models.v0.postprocess.newick import build_newick
+from .preprocess.denoising import denoise_image_tensor, load_and_preprocess_image, DenoisingModel, img_to_tensor, tensor_to_gray
+from .preprocess.cropping import extract_tree_crop_from_image, CroppingModel
+from .preprocess.labelling import extract_ordered_texts_from_image, LabellingModel, tensor_to_np
+from .nodesdetection.infer_ts_cpu import load_ts_model, infer_image
+from .postprocess.corrector import correction
+from .postprocess.newick import build_newick
 
 class v0(Model):
     def __init__(self):
