@@ -28,7 +28,7 @@ def crop_image_with_bbox(img, bbox):
     """
     Crop an image using a bounding box.
 
-    img : numpy array (H, W, C)
+    img : numpy array [H, W, C] uint8
     bbox : [x_min, y_min, x_max, y_max] in pixels
     """
     H, W = img.shape[:2]
@@ -69,46 +69,56 @@ def expand_bbox(bbox, expand_ratio=0.05):
 
 def tensor_to_img(tensor):
     """
-    Convert a PyTorch tensor [C,H,W] normalized back to a numpy image [H,W,C] uint8
+    Convert a PyTorch tensor [C, H, W] normalized back to a numpy image [H, W, C] uint8
     """
-    img_np = tensor.permute(1, 2, 0).cpu().numpy() # [H,W,C]
+    img_np = tensor.permute(1, 2, 0).cpu().numpy() # [H, W, C]
     img_np = (img_np * 255).astype(np.uint8)
     return img_np
 
-def extract_tree_crops_from_images(
-    img_tensors,
+def extract_tree_from_image(
+    imgs_rgb,
     model,
+    model_input_size,
     device="cpu",
     return_bboxes=False
 ):
     """
     Extract tree crops from N image tensors using a BBox model.
 
-    img_tensors : torch tensor [N, 3, H, W] normalized
+    imgs_rgb : list of numpy arrays [H, W, 3] uint8
     model : BBox prediction model
-    return : list of cropped images (numpy), optional BBoxes
+    model_input_size : prefered model input size
+    return : list of numpy arrays [H, W, 3] uint8, optional BBoxes
     """
-    N, C, H, W = img_tensors.shape
+    img_tensors_list = []
+    for img_rgb in imgs_rgb:
+        img_resized = cv2.resize(img_rgb, model_input_size, interpolation=cv2.INTER_LINEAR)
+        img_bw3 = img_to_gray(img_resized, threshold=200, out_channels=3) # [H, W, 3]
+        tensor = img_to_tensor(img_bw3).unsqueeze(0) # [1, 3, H, W]
+        img_tensors_list.append(tensor)
 
-    img_tensors = img_tensors.to(device)
+    img_tensors = torch.cat(img_tensors_list, dim=0).to(device) # [N, 3, H, W]
 
+    # forward pass through the model
     model.eval()
     with torch.no_grad():
         pred_bboxes_norm = model(img_tensors).cpu() # [N, 4]
 
-    crops = []
+    trees = []
     global_bboxes = []
 
-    for i in range(N):
-        img_np = tensor_to_img(img_tensors[i])
+    for i in range(len(pred_bboxes_norm)):
+        img_rgb = imgs_rgb[i] # [H, W, 3]
+        H, W, _ = img_rgb.shape
 
         global_bbox = denormalize_bbox(expand_bbox(pred_bboxes_norm[i]), W, H)
-        cropped_tree = crop_image_with_bbox(img_np, global_bbox)
-        cropped_tree = cv2.resize(cropped_tree, (H, W), interpolation=cv2.INTER_LINEAR)
 
-        crops.append(cropped_tree)
+        tree = crop_image_with_bbox(img_rgb, global_bbox)
+        tree = cv2.resize(tree, (H, W), interpolation=cv2.INTER_LINEAR)
+
+        trees.append(tree)
         global_bboxes.append(global_bbox)
 
     if return_bboxes:
-        return crops, global_bboxes
-    return crops
+        return trees, global_bboxes
+    return trees

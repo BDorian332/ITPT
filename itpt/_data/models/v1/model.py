@@ -2,8 +2,8 @@ import os
 import torch
 import cv2
 from itpt.core import Model
-from .preprocessing.cropping import extract_tree_crops_from_images, CroppingModel
-from .preprocessing.denoising import denoise_image_tensors, load_and_preprocess_image, DenoisingModel, img_to_tensor, tensor_to_gray
+from .preprocessing.cropping import extract_tree_from_image, CroppingModel
+from .preprocessing.denoising import denoise_image, load_and_preprocess_image, DenoisingModel, img_to_tensor, img_to_gray
 from .postprocessing.newick import build_newick
 from .postprocessing.ocr import detect_texts, get_texts_detector_model
 
@@ -51,15 +51,15 @@ class v1(Model):
         return img_rgb, img_tensor, (H, W)
 
     def extract_tree(self, img_rgb):
-        print("Extracting tree crop...")
-        cropped_trees = extract_tree_crop_from_image(img_rgb.unsqueeze(0), model=self.cropping_model)
-        cropped_tree = cropped_trees[0]
-        print("Tree crop obtained, shape:", cropped_tree.shape)
-        return cropped_tree
+        print("Extracting tree...")
+        trees = extract_tree_from_image([img_rgb], self.cropping_model, (500, 500))
+        tree = trees[0]
+        print("Tree obtained, shape:", tree.shape)
+        return tree
 
     def clean_tree(self, cropped_tree):
         print("Cleaning tree...")
-        cleaned_trees = denoise_image_tensor(tensor_to_gray(img_to_tensor(cropped_tree)).unsqueeze(0), model=self.denoising_model)
+        cleaned_trees = denoise_image([cropped_tree], self.denoising_model, (512, 512))
         cleaned_tree = cleaned_trees[0]
         print("Cleaned tree obtained, shape:", cleaned_tree.shape)
         return cleaned_tree
