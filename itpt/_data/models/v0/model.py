@@ -36,7 +36,7 @@ class v0(Model):
         print(f"Models loaded")
         self._loaded = True
 
-    def convert(self, image_path, device="cpu"):
+    def convert(self, image_path):
         self.ensure_loaded()
 
         print("Loading and preprocessing image...")

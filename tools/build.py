@@ -6,7 +6,8 @@ from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).parents[1]
 GUI_MAIN = PROJECT_ROOT / "gui" / "main.py"
-DATA_MODELS_DIR = PROJECT_ROOT / "itpt" / "_data" / "models"
+MODELS_SRC_DIR = PROJECT_ROOT / "itpt" / "_data" / "models"
+MODELS_TO_INCLUDE = ["v1"]
 
 def build_lib():
     print("=== Building Python library ===")
@@ -17,7 +18,7 @@ def build_lib():
         sys.exit(1)
 
 def build_gui():
-    print("=== Building GUI standalone ===")
+    print("=== Building standalone GUI ===")
     if not GUI_MAIN.exists():
         print(f"GUI main.py not found at {GUI_MAIN}")
         return
@@ -27,15 +28,27 @@ def build_gui():
     else: # Linux / macOS
         sep = ":"
 
-    add_data_option = f"{DATA_MODELS_DIR}{sep}_data/models"
+    data_args = []
+    for model_name in MODELS_TO_INCLUDE:
+        model_path = MODELS_SRC_DIR / model_name
+        if model_path.exists():
+            dest_path = f"itpt/_data/models/{model_name}"
+            data_args.extend(["--add-data", f"{model_path}{sep}{dest_path}"])
+            print(f"Including model: {model_name}")
+        else:
+            print(f"Warning: Model folder {model_name} not found in {MODELS_SRC_DIR}")
 
     cmd = [
         "pyinstaller",
         "--onefile",
         "--windowed",
+        "--clean",
         "--noconfirm",
-        "--add-data", add_data_option,
-        "-n", "gui",
+        "--collect-all", "torch",
+        "--collect-all", "cv2",
+        "--collect-all", "doctr",
+        *data_args,
+        "--name", "gui",
         str(GUI_MAIN)
     ]
 

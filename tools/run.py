@@ -4,17 +4,12 @@ import argparse
 from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).parents[1]
-GUI_MAIN = PROJECT_ROOT / "gui" / "main.py"
 SANDBOX_MAIN = PROJECT_ROOT / "sandbox" / "main.py"
 
 def run_gui():
-    if not GUI_MAIN.exists():
-        print(f"GUI main.py not found at {GUI_MAIN}")
-        return
-
     print("=== Running GUI ===")
     try:
-        subprocess.run([sys.executable, str(GUI_MAIN)], check=True)
+        subprocess.run([sys.executable, "-m", "gui.main"], check=True)
     except subprocess.CalledProcessError as e:
         print(f"Failed to run GUI: {e}")
         sys.exit(1)

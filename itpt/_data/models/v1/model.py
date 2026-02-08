@@ -30,7 +30,7 @@ class v1(Model):
         print(f"Models loaded")
         self._loaded = True
 
-    def convert(self, image_path, device="cpu"):
+    def convert(self, image_path):
         self.ensure_loaded()
 
         img_rgb, img_tensor, (H, W) = self.load_and_preprocess(image_path)

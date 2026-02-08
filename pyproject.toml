@@ -20,7 +20,10 @@ where = ["."]
 include = ["itpt*"]
 
 [tool.setuptools.package-data]
-"itpt" = ["_data/**/*"]
+"itpt" = ["_data/"]
+
+[tool.setuptools.exclude-package-data]
+"itpt" = ["_data/models/v0/"]
 
 [tool.poetry.scripts]
 itpt-build = "tools.build:main"
