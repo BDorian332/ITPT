@@ -2,9 +2,9 @@ import os
 import torch
 import cv2
 from itpt.core import Model
+from itpt.core import build_newick
 from .preprocessing.cropping import extract_tree_from_image, CroppingModel
 from .preprocessing.denoising import denoise_image, load_and_preprocess_image, DenoisingModel, img_to_tensor, img_to_gray
-from .postprocessing.newick import build_newick
 from .postprocessing.ocr import detect_texts, get_texts_detector_model
 
 class v1(Model):
