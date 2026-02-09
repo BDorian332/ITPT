@@ -11,7 +11,7 @@ class Point:
         return f"Point({self.x}, {self.y}, {self.type}, processed={self.processed})"
 
 class NewickInternal:
-    def __init__(self, name: Optional[str] = None, length: float = 0.0, children: List["NewickInternal"] = []):
+    def __init__(self, name: Optional[str] = None, length: float = 0.0, children: List["NewickInterna"] = []):
         self.name = name
         self.length = length
         self.children = children
@@ -22,6 +22,17 @@ class NewickInternal:
         inner = ",".join(child.to_string() for child in self.children)
         return f"({inner}):{self.length:.6f}"
 
+    def max_path_length(self, acc: float = 0.0) -> float:
+        total = acc + self.length
+        if not self.children:
+            return total
+        return max(child.max_path_length(total) for child in self.children)
+
+    def scale_lengths(self, factor: float):
+        self.length *= factor
+        for child in self.children:
+            child.scale_lengths(factor)
+
 class Newick:
     def __init__(self, internals: List[NewickInternal] = []):
         self.internals = internals
@@ -31,6 +42,25 @@ class Newick:
             return "();"
         inner = ",".join(internal.to_string() for internal in self.internals)
         return f"({inner});"
+
+    def max_path_length(self, acc: float = 0.0) -> float:
+        return max(root.max_path_length() for root in self.internals)
+
+    def scale_lengths(self, factor: float):
+        for root in self.internals:
+            root.scale_lengths(factor)
+
+    def normalize(self):
+        if not self.internals:
+            return
+
+        max_path_length = self.max_path_length()
+
+        if max_path_length == 0:
+            return
+
+        factor = 1.0 / max_path_length
+        self.scale_lengths(factor)
 
 def get_nearest_label(x: float, y: float, texts: List[dict], max_distance: float) -> str:
     nearest_label = "leaf"
@@ -267,4 +297,6 @@ def build_newick(
             "bbox": scaled_bbox
         })
 
-    return build_newick_from_points(points, margin=margin, texts=scaled_texts, max_distance=max_distance)
+    newick = build_newick_from_points(points, margin=margin, texts=scaled_texts, max_distance=max_distance)
+    newick.normalize()
+    return newick
