@@ -11,39 +11,58 @@ def process_no_root_node(
     direction: str,
     x_leave: float,
     margin: float,
-    depth: int = 0
+    depth: int = 0,
+    verbose: bool = False
 ) -> List[Segment]:
     if node.processed:
-        print("    " * depth + f"Skipping node: {node.to_string()} (already processed)")
+        if verbose:
+            print("    " * depth + f"Skipping node: {node.to_string()} (already processed)")
         return []
+
     node.processed = True
-    print("    " * depth + f"Processing node: {node.to_string()} in direction {direction}")
+    if verbose:
+        print("    " * depth + f"Processing node: {node.to_string()} in direction {direction}")
 
     results: List[Segment] = []
 
     if node.type != "corner":
         next_pt = get_nearest_point(node.x, node.y, points, direction, margin)
         if next_pt:
-            print("    " * (depth + 1) + f"Found next point {next_pt.to_string()} in direction {direction}")
-            sub = process_no_root_node(next_pt, points, direction, x_leave, margin, depth=depth + 1)
+            if verbose:
+                print("    " * (depth + 1) + f"Found next point {next_pt.to_string()} in direction {direction}")
+
+            sub = process_no_root_node(
+                next_pt, points, direction, x_leave, margin,
+                depth=depth + 1, verbose=verbose
+            )
+
             if sub:
                 results.append(((node.x, node.y), (next_pt.x, next_pt.y)))
                 results.extend(sub)
 
     right_pt = get_nearest_point(node.x, node.y, points, "right", margin)
+
     if right_pt:
         next_len = abs(right_pt.x - node.x)
-        print("    " * (depth + 1) + f"Propagating right to {right_pt.to_string()} with length {next_len}")
-        root_sub = process_root_node(right_pt, points, x_leave, margin, next_len, depth=depth + 1)
-        if len(root_sub) == 0:
-            pass
-        elif len(root_sub) == 1:
+
+        if verbose:
+            print("    " * (depth + 1) + f"Propagating right to {right_pt.to_string()} with length {next_len}")
+
+        root_sub = process_root_node(
+            right_pt, points, x_leave, margin,
+            next_len, depth=depth + 1, verbose=verbose
+        )
+
+        if len(root_sub) == 1:
             results.append(((node.x, node.y), (x_leave, node.y)))
-        else:
+        elif len(root_sub) > 1:
             results.append(((node.x, node.y), (right_pt.x, right_pt.y)))
             results.extend(root_sub)
+
     else:
-        print("    " * (depth + 1) + f"No point to the right, creating leaf at x={x_leave}")
+        if verbose:
+            print("    " * (depth + 1) + f"No point to the right, creating leaf at x={x_leave}")
+
         results.append(((node.x, node.y), (x_leave, node.y)))
 
     return results
@@ -54,28 +73,45 @@ def process_root_node(
     x_leave: float,
     margin: float,
     incoming_length: float = 0.0,
-    depth: int = 0
+    depth: int = 0,
+    verbose: bool = False
 ) -> List[Segment]:
+
     if node.processed:
-        print("    " * depth + f"Skipping node: {node.to_string()} (already processed)")
+        if verbose:
+            print("    " * depth + f"Skipping node: {node.to_string()} (already processed)")
         return []
+
     node.processed = True
-    print("    " * depth + f"Processing root node: {node.to_string()} with incoming length {incoming_length}")
+
+    if verbose:
+        print("    " * depth + f"Processing root node: {node.to_string()} with incoming length {incoming_length}")
 
     if abs(node.x - x_leave) <= margin:
-        print("    " * depth + f"Node near x_leave, creating leaf: {node.to_string()} with length {incoming_length}")
+        if verbose:
+            print("    " * depth + f"Node near x_leave, creating leaf")
+
         return [((0, 0), (0, 0))]
 
     down_pt = get_nearest_point(node.x, node.y, points, "down", margin)
     up_pt = get_nearest_point(node.x, node.y, points, "up", margin)
 
-    down_tree = process_no_root_node(down_pt, points, "down", x_leave, margin, depth=depth + 1) if down_pt else []
-    up_tree = process_no_root_node(up_pt, points, "up", x_leave, margin, depth=depth + 1) if up_pt else []
+    down_tree = process_no_root_node(
+        down_pt, points, "down", x_leave, margin,
+        depth=depth + 1, verbose=verbose
+    ) if down_pt else []
+
+    up_tree = process_no_root_node(
+        up_pt, points, "up", x_leave, margin,
+        depth=depth + 1, verbose=verbose
+    ) if up_pt else []
 
     results: List[Segment] = []
 
     if not down_tree and not up_tree:
-        print("    " * (depth + 1) + f"No up/down branches, creating leaf with length {incoming_length + abs(x_leave - node.x)}")
+        if verbose:
+            print("    " * (depth + 1) + "No up/down branches, creating leaf")
+
         results.append(((0, 0), (0, 0)))
         return results
 
@@ -86,18 +122,24 @@ def process_root_node(
         kept_pt = down_pt if down_tree else up_pt
         dy = kept_pt.y - node.y
         sym_y = node.y - dy
-        print("    " * (depth + 1) + f"Missing one corner, creating symmetric corner at y={sym_y}")
+
+        if verbose:
+            print("    " * (depth + 1) + f"Missing branch, symmetric corner at y={sym_y}")
+
         sym_tree = process_no_root_node(
             Point(kept_pt.x, sym_y, "corner"),
             points,
             "up" if kept_pt == down_pt else "down",
             x_leave,
             margin,
-            depth=depth + 1
+            depth=depth + 1,
+            verbose=verbose
         )
+
         results.append(((node.x, node.y), (kept_pt.x, kept_pt.y)))
         results.append(((node.x, node.y), (kept_pt.x, sym_y)))
         results.extend(sym_tree)
+
     else:
         results.append(((node.x, node.y), (down_pt.x, down_pt.y)))
         results.append(((node.x, node.y), (up_pt.x, up_pt.y)))
@@ -107,7 +149,10 @@ def process_root_node(
     right_pt = get_nearest_point(node.x, node.y, points, "right", margin)
     if right_pt:
         next_len = abs(right_pt.x - node.x)
-        print("    " * (depth + 1) + f"Propagating right to {right_pt.to_string()} with length {next_len}")
+
+        if verbose:
+            print("    " * (depth + 1) + f"Propagating right to {right_pt.to_string()} with length {next_len}")
+
         root_sub = process_root_node(right_pt, points, x_leave, margin, next_len, depth=depth + 1)
         if len(root_sub) == 0:
             pass
@@ -119,29 +164,54 @@ def process_root_node(
 
     return results
 
-def build_segments_from_points(points: List[Point], margin: float = 0.5) -> Optional[List[Segment]]:
-    print("Resetting points...")
+def build_segments_from_points(
+    points: List[Point],
+    margin: float = 0.5,
+    verbose: bool = False
+) -> Optional[List[Segment]]:
+
+    if verbose:
+        print("Resetting points...")
+
     reset_points(points)
 
     if not points:
-        print("No points provided.")
+        if verbose:
+            print("No points provided.")
         return None
 
     min_x = min(p.x for p in points)
-    print(f"Minimal x found: {min_x}")
+
+    if verbose:
+        print(f"Minimal x found: {min_x}")
 
     start_candidates = [p for p in points if abs(p.x - min_x) <= margin]
-    print(f"Found {len(start_candidates)} start candidates within margin {margin}")
+
+    if verbose:
+        print(f"Found {len(start_candidates)} start candidates within margin {margin}")
 
     start_point = min(start_candidates, key=lambda p: p.y)
     start_point.type = "node"
-    print(f"Start point chosen (lowest y among min_x): {start_point.to_string()}")
+
+    if verbose:
+        print(f"Start point chosen (lowest y among min_x): {start_point.to_string()}")
 
     x_leave = max(p.x for p in points)
-    print(f"x_leave set to: {x_leave}")
 
-    segments = process_no_root_node(start_point, points, "up", x_leave, margin)
-    print("Segments built.")
+    if verbose:
+        print(f"x_leave set to: {x_leave}")
+
+    segments = process_no_root_node(
+        start_point,
+        points,
+        "up",
+        x_leave,
+        margin,
+        verbose=verbose
+    )
+
+    if verbose:
+        print("Segments built.")
 
     return segments
 
