@@ -107,10 +107,10 @@ print(newick.to_string())
 
 2. **Conversion of Tree Images**
 
-- Method: `convert(image_path)`
+- Method: `convert(path_or_array)`
 - Description: Converts an input image containing a phylogenetic tree into a Newick format string via a sequential pipeline.
 - Parameters:
-  - `image_path` (str): path to the input image
+  - `path_or_array` (str or numpy array): path or array of the input image
 - Steps:
   1. Calls `load_and_preprocess(path_or_array)` to read the image, resize it to 1500x1500px, and convert it to a tensor.
   2. Calls `extract_tree([img_rgb])` to extract the tree region using the `CroppingModel`.

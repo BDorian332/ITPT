@@ -48,5 +48,5 @@ class Model(ABC):
             raise RuntimeError("Model must be loaded before inference.")
 
     @abstractmethod
-    def convert(self, img_path):
+    def convert(self, path_or_array):
         pass

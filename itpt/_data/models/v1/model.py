@@ -38,10 +38,10 @@ class v1(Model):
         print("Models loaded")
         self._loaded = True
 
-    def convert(self, img_path):
+    def convert(self, path_or_array):
         self.ensure_loaded()
 
-        img_rgb_resized, img_tensor, (H, W) = self.load_and_preprocess(img_path)
+        img_rgb_resized, img_tensor, (H, W) = self.load_and_preprocess(path_or_array)
 
         cropped_trees = self.extract_tree([img_rgb_resized])
         cleaned_trees = self.clean_tree(cropped_trees)

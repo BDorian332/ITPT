@@ -1,11 +1,18 @@
 import os
 import tkinter as tk
 import threading
+import importlib
 from tkinter import ttk, filedialog, messagebox
 from pathlib import Path
 from PIL import Image, ImageTk
 from itpt.models import get_list, get_model
 from itpt.core.newick import Point
+
+class Step:
+    def __init__(self, name, default_enabled=True):
+        self.name = name
+        self.default_enabled = default_enabled
+        self.enabled = default_enabled
 
 class ITPTGUI:
     def __init__(self, root):
@@ -90,16 +97,46 @@ class ITPTGUI:
         scrollbar.pack(side="right", fill="y")
         self.output_text.configure(yscrollcommand=scrollbar.set)
 
+        # Steps options
+        self.steps_frame = ttk.LabelFrame(self.root, text="Steps options")
+        self.steps_frame.grid(row=8, column=0, columnspan=3, sticky="ew", padx=5, pady=5)
+        self.step_vars = {}
+
         # Convert button + progress
         self.convert_button = ttk.Button(root, text="Convert", command=self.convert)
-        self.convert_button.grid(row=8, column=0, columnspan=3, padx=5, pady=5)
+        self.convert_button.grid(row=9, column=0, columnspan=3, padx=5, pady=5)
         self.progress = ttk.Progressbar(root, mode="indeterminate")
-        self.progress.grid(row=9, column=0, columnspan=3, sticky="ew", padx=5, pady=5)
+        self.progress.grid(row=10, column=0, columnspan=3, sticky="ew", padx=5, pady=5)
         self.progress.grid_remove()
 
         # Grid expand
         root.grid_columnconfigure(1, weight=1)
         root.grid_rowconfigure(4, weight=1)
+
+    def update_steps_ui(self):
+        for widget in self.steps_frame.winfo_children():
+            widget.destroy()
+
+        model_name = self.model_name_var.get()
+        if not model_name:
+            return
+
+        model_name = model_name.replace(" ", "_")
+        try:
+            model_module = importlib.import_module(f"gui_v1.models.{model_name}")
+        except ModuleNotFoundError:
+            self.current_model_module = None
+            return
+
+        self.step_vars.clear()
+        for i, step in enumerate(getattr(model_module, "STEPS")):
+            var = tk.BooleanVar(value=step.default_enabled)
+            self.step_vars[step.name] = var
+            cb = ttk.Checkbutton(self.steps_frame, text=step.name, variable=var)
+            cb.grid(row=0, column=i, sticky="w", padx=5, pady=5)
+
+        self.current_model_module = model_module
+        self.current_model_steps = getattr(model_module, "STEPS")
 
     # ---------- Events ----------
 
@@ -122,6 +159,12 @@ class ITPTGUI:
 
         # Hover cursor
         c.bind("<Motion>", self.update_cursor)
+
+        self.model_combobox.bind("<<ComboboxSelected>>", self.on_model_change)
+        self.on_model_change()
+
+    def on_model_change(self, event=None):
+        self.update_steps_ui()
 
     # ---------- Toggle modes ----------
 
@@ -233,7 +276,7 @@ class ITPTGUI:
     def on_zoom(self, event):
         if not self.preview_image:
             return
-        if event.delta > 0 or getattr(event, "num", None) == 4:
+        if event.delta > 0 or getattr(event, "num") == 4:
             self.zoom *= 1.1
         else:
             self.zoom *= 0.9
@@ -249,7 +292,7 @@ class ITPTGUI:
         return None
 
     def start_interaction(self, event):
-        # Check if clicking on point
+        # Check if clicking on a point
         self.selected_point = self.get_hovered_point(event)
 
         if event.num == 3:
@@ -332,29 +375,24 @@ class ITPTGUI:
             model = get_model(model_name)
             model.load()
 
-            if self.points:
-                points_norm = scale_points(self.points, scale_width=1.0/img_w, scale_height=1.0/img_h)
-                newick = model.build_newick(points_norm, texts=self.texts)
+            if self.current_model_module is None:
+                newick = model.convert(np.array(self.preview_image))
                 newick_str = newick.to_string()
             else:
-                if model_name.startswith("V1"):
-                    img_rgb_resized, img_tensor, (H, W) = model.load_and_preprocess(np.array(self.preview_image))
+                for step in self.current_model_steps:
+                    step.enabled = self.step_vars[step.name].get()
 
-                    cropped_trees = model.extract_tree([img_rgb_resized])
-                    cleaned_trees = model.clean_tree(cropped_trees)
-
-                    nodes_by_image = model.detect_nodes(cleaned_trees)
-                    self.points = scale_points(nodes_by_image[0], scale_width=img_w, scale_height=img_h)
-
-                    texts_by_image = model.detect_texts([img_rgb_resized])
-                    self.texts = texts_by_image[0]
-
-                    newick = model.build_newick(nodes_by_image[0], texts=texts_by_image[0])
+                if self.points:
+                    points_norm = scale_points(self.points, scale_width=1.0/img_w, scale_height=1.0/img_h)
+                    newick = model.build_newick(points_norm, texts=self.texts)
                     newick_str = newick.to_string()
-
-                    self.redraw_preview()
                 else:
-                    newick = model.convert(input_path)
+                    newick, points, texts = self.current_model_module.run_steps(model, np.array(self.preview_image), steps=self.current_model_steps)
+
+                    self.points = scale_points(points, scale_width=img_w, scale_height=img_h)
+                    self.texts = scale_texts(texts, scale_width=img_w, scale_height=img_h)
+                    self.redraw_preview()
+
                     newick_str = newick.to_string()
 
             if output_file:
