@@ -20,9 +20,12 @@ root/
         _data/
             models/
                 ...
-    gui/
-	__init__.py
+    gui_v0/
+	    __init__.py
         main.py
+    gui_v1/
+        __init__.py
+        ...
     dev/
 	_datasets/
 		...
@@ -34,7 +37,7 @@ root/
     sandbox/
         main.py
     tools/
-	__init__.py
+	    __init__.py
         build.py
         clean.py
         generate_models.py
