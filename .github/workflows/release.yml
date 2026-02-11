@@ -42,14 +42,16 @@ jobs:
         shell: bash
         run: |
           mkdir -p artifacts
-          for f in dist/*; do
-            base=$(basename "$f")
-            if [ -d "$f" ]; then
-              cp -r "$f" "artifacts/${base}-${{ runner.os }}"
-            else
-              cp "$f" "artifacts/${base}-${{ runner.os }}"
-            fi
-          done
+
+          if [[ "${RUNNER_OS}" == "Linux" ]]; then
+              cp dist/gui-Linux artifacts/gui-Linux
+          elif [[ "${RUNNER_OS}" == "macOS" ]]; then
+              cp -r dist/gui.app artifacts/gui-macOS
+          elif [[ "${RUNNER_OS}" == "Windows" ]]; then
+              cp dist/gui.exe artifacts/gui-Windows.exe
+          fi
+
+          cp dist/itpt-0-py3-none-any.whl artifacts/itpt-0-py3-none-any.whl
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
@@ -63,6 +65,9 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
       - name: Download all artifacts
         uses: actions/download-artifact@v4
         with:
