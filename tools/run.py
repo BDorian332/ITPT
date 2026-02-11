@@ -9,7 +9,7 @@ SANDBOX_MAIN = PROJECT_ROOT / "sandbox" / "main.py"
 def run_gui():
     print("=== Running GUI ===")
     try:
-        subprocess.run([sys.executable, "-m", "gui_v0.main"], check=True)
+        subprocess.run([sys.executable, "-m", "gui_v1.main"], check=True)
     except subprocess.CalledProcessError as e:
         print(f"Failed to run GUI: {e}")
         sys.exit(1)

@@ -11,7 +11,7 @@ class Point:
         return f"Point({self.x}, {self.y}, {self.type}, processed={self.processed})"
 
 class NewickInternal:
-    def __init__(self, name: Optional[str] = None, length: float = 0.0, children: List["NewickInterna"] = []):
+    def __init__(self, name: Optional[str] = None, length: float = 0.0, children: List["NewickInternal"] = []):
         self.name = name
         self.length = length
         self.children = children
@@ -297,52 +297,63 @@ def reset_points(points: List[Point]) -> None:
     for p in points:
         p.processed = False
 
-def build_newick_from_points(
+def build_newick(
     points: List[Point],
     margin: float = 0.5,
     texts: List[dict] = [],
     max_distance: float = 1,
+    scale_width: float = 1.0,
+    scale_height: float = 1.0,
     verbose: bool = False
 ) -> Optional[Newick]:
+    """
+    Build a Newick tree from a list of Points and optional texts, applying separate width/height scaling.
+
+    points : list of Point objects
+    margin : margin for determining start point
+    texts : list of text dicts with "bbox" key
+    max_distance : maximum distance to associate a text to a point
+    scale_width : factor to scale x coordinates
+    scale_height : factor to scale y coordinates
+    verbose : if True, print debug info
+    return : Newick object or None if no points
+    """
+    scaled_points = scale_points(points, scale_width, scale_height)
+    scaled_texts = scale_texts(texts, scale_width, scale_height)
 
     if verbose:
         print("Resetting points...")
+    reset_points(scaled_points)
 
-    reset_points(points)
-
-    if not points:
+    if not scaled_points:
         if verbose:
             print("No points provided.")
         return None
 
-    min_x = min(p.x for p in points)
+    min_x = min(p.x for p in scaled_points)
+    start_candidates = [p for p in scaled_points if abs(p.x - min_x) <= margin]
 
     if verbose:
         print(f"Minimal x found: {min_x}")
-
-    start_candidates = [p for p in points if abs(p.x - min_x) <= margin]
-
-    if verbose:
         print(f"Found {len(start_candidates)} start candidates within margin {margin}")
 
     start_point = min(start_candidates, key=lambda p: p.y)
     start_point.type = "node"
 
     if verbose:
-        print(f"Start point chosen (lowest y among min_x): {start_point.to_string()}")
+        print(f"Start point chosen: {start_point.to_string()}")
 
-    x_leave = max(p.x for p in points)
-
+    x_leave = max(p.x for p in scaled_points)
     if verbose:
         print(f"x_leave set to: {x_leave}")
 
     newick_internals = process_no_root_node(
         start_point,
-        points,
+        scaled_points,
         "up",
         x_leave,
         margin,
-        texts,
+        scaled_texts,
         max_distance,
         verbose=verbose
     )
@@ -352,54 +363,59 @@ def build_newick_from_points(
 
     return Newick(newick_internals)
 
-def build_newick(
-    nodes: List[Tuple],
-    corners: List[Tuple] = [],
-    scale: float = 1500.0,
-    margin: float = 0.5,
-    texts: List[dict] = [],
-    max_distance: float = 20
-) -> Optional[Newick]:
+def scale_points(points: List[Point], scale_width: float = 1.0, scale_height: float = 1.0) -> List[Point]:
     """
-    Build a Newick tree from nodes and corners.
+    Scale a list of Point objects by separate width and height scales.
 
-    nodes : list of tuples, each tuple with at least 2 elements (x, y, ...)
-    corners : list of tuples, each tuple with at least 2 elements (x, y, ...)
-    margin : margin for comparison
-    scale : scale factor to apply to coordinates
-    texts : text labels with their bounding box
-    max_distance : maximum distance allowed to associate a text label to a point
-    return : Newick object
+    points : list of Point objects
+    scale_width : scale factor for x coordinate
+    scale_height : scale factor for y coordinate
+    return : new list of scaled Point objects
     """
-    points: List[Point] = []
+    return [Point(p.x * scale_width, p.y * scale_height, p.type) for p in points]
 
-    for t in nodes:
-        if len(t) < 2:
-            continue
-        x, y = float(t[0]) * scale, float(t[1]) * scale
-        points.append(Point(x, y))
+def scale_texts(texts: List[dict], scale_width: float = 1.0, scale_height: float = 1.0) -> List[dict]:
+    """
+    Scale text bounding boxes by separate width and height scales.
 
-    for t in corners:
-        if len(t) < 2:
-            continue
-        x, y = float(t[0]) * scale, float(t[1]) * scale
-        points.append(Point(x, y, "corner"))
-
+    texts : list of dicts with "bbox": [x1, y1, x2, y2]
+    scale_width : scale factor for x coordinates
+    scale_height : scale factor for y coordinates
+    return : new list of scaled text dicts
+    """
     scaled_texts = []
     for entry in texts:
         x1, y1, x2, y2 = entry["bbox"]
         scaled_bbox = [
-            x1 * scale,
-            y1 * scale,
-            x2 * scale,
-            y2 * scale,
+            x1 * scale_width,
+            y1 * scale_height,
+            x2 * scale_width,
+            y2 * scale_height
         ]
+        scaled_texts.append({**entry, "bbox": scaled_bbox})
+    return scaled_texts
 
-        scaled_texts.append({
-            **entry,
-            "bbox": scaled_bbox
-        })
+def points_to_tuples(points: List[Point], scale_width: float = 1.0, scale_height: float = 1.0):
+    nodes_list = []
+    corners_list = []
 
-    newick = build_newick_from_points(points, margin=margin, texts=scaled_texts, max_distance=max_distance)
-    newick.normalize()
-    return newick
+    for p in points:
+        x = p.x * scale_width
+        y = p.y * scale_height
+        if p.type == "node":
+            nodes_list.append((x, y))
+        elif p.type == "corner":
+            corners_list.append((x, y))
+
+    return nodes_list, corners_list
+
+def tuples_to_points(nodes_tuples: List[tuple], corners_tuples: List[tuple], scale_width: float = 1.0, scale_height: float = 1.0):
+    points = []
+
+    for x, y in nodes_tuples:
+        points.append(Point(x * width, y * height, "node"))
+
+    for x, y in corners_tuples:
+        points.append(Point(x * width, y * height, "corner"))
+
+    return points

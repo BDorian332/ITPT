@@ -112,10 +112,10 @@ print(newick.to_string())
 - Parameters:
   - `image_path` (str): path to the input image
 - Steps:
-  1. Calls `load_and_preprocess(image_path)` to read the image, resize it to 1500x1500px, and convert it to a tensor.
+  1. Calls `load_and_preprocess(path_or_array)` to read the image, resize it to 1500x1500px, and convert it to a tensor.
   2. Calls `extract_tree([img_rgb])` to extract the tree region using the `CroppingModel`.
   3. Calls `clean_tree(cropped_trees)` to denoise the result with the `DenoisingModel`.
-  4. Calls `detect_nodes(cleaned_trees)` to identify topological nodes using `NodesDetectionModel`.
+  4. Calls `detect_nodes(cleaned_trees)` to identify nodes using `NodesDetectionModel`.
   5. Calls `detect_texts([img_rgb])` to run OCR and find texts on the original image.
   6. Calls `build_newick(nodes_by_image[0][0], nodes_by_image[0][1], texts)` to generate the final object.
 - Returns: `Newick` object representing the tree.
@@ -133,12 +133,12 @@ print(newick.to_string())
   - Returns `cleaned_trees` (list of arrays of cleaned images).
 - `detect_nodes(cleaned_trees)`:
   - Uses `NodesDetectionModel` to analyzes cleaned images to detect junctions and tips.
-  - Returns `nodes_by_image` (list of pairs of lists of `Point` representing images nodes (the first list of the pair contains internal nodes and leaves, the second list contains corners)).
+  - Returns `nodes_by_image` (list of lists of `Point` representing images nodes).
 - `detect_texts(imgs_rgb)`:
   - Uses OCR (`texts_detector_model`) to extract text from the images.
   - Returns `texts_by_image` (list of lists of texts of original images. Each text is represented by its string and its bounding box).
-- `build_newick(nodes, corners, texts)`:
-  - Constructs a Newick object from detected nodes, corners, and texts.
+- `build_newick(nodes, texts)`:
+  - Constructs a Newick object from detected nodes and texts.
   - Returns `newick` object.
 
 ### For Developers

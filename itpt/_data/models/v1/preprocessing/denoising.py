@@ -76,28 +76,33 @@ def img_to_tensor(img):
     """
     return torch.tensor(img, dtype=torch.float32).permute(2, 0, 1) / 255.0
 
-def load_and_preprocess_image(path, size=(512, 512)):
+def load_and_preprocess_image(path_or_array, size=(512, 512)):
     """
-    Load an image from disk and preprocess it.
+    Load an image from disk or use a numpy array and preprocess it.
 
-    return:
-    - img_rgb : numpy array [H, W, 3] uint8
-    - img_tensor : tensor [1, 1, H, W] normalized
-    - (H, W) : original size
+    path_or_array : str (path) or numpy array [H, W, 3] uint8
+    size : tuple (width, height)
+    return :
+        img_rgb_resized : numpy array [height, width, 3] uint8
+        img_tensor : tensor [1, H, W] normalized
+        (H, W) : original size
     """
-    try:
-        pil_img = Image.open(path).convert("RGB")
-    except FileNotFoundError:
-        raise FileNotFoundError(path)
+    if isinstance(path_or_array, str):
+        try:
+            pil_img = Image.open(path_or_array).convert("RGB")
+            img_rgb = np.array(pil_img)
+        except FileNotFoundError:
+            raise FileNotFoundError(path_or_array)
+    elif isinstance(path_or_array, np.ndarray):
+        img_rgb = path_or_array.copy()
 
-    img_rgb = np.array(pil_img)
     H, W, _ = img_rgb.shape
 
-    img_rgb = cv2.resize(img_rgb, size, interpolation=cv2.INTER_LINEAR)
-    img_bw = img_to_gray(img_rgb, threshold=200, out_channels=1)
-    img_tensor = img_to_tensor(img_bw) # [1, H, W]
+    img_rgb_resized = cv2.resize(img_rgb, size, interpolation=cv2.INTER_LINEAR)
+    img_bw = img_to_gray(img_rgb_resized, threshold=200, out_channels=1)
+    img_tensor = img_to_tensor(img_bw) # [1, H, W] normalized
 
-    return img_rgb, img_tensor, (H, W)
+    return img_rgb_resized, img_tensor, (H, W)
 
 def denoise_image(imgs_rgb, model, model_input_size, device="cpu"):
     """

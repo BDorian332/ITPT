@@ -38,24 +38,24 @@ class v1(Model):
         print("Models loaded")
         self._loaded = True
 
-    def convert(self, image_path):
+    def convert(self, img_path):
         self.ensure_loaded()
 
-        img_rgb, img_tensor, (H, W) = self.load_and_preprocess(image_path)
+        img_rgb_resized, img_tensor, (H, W) = self.load_and_preprocess(img_path)
 
-        cropped_trees = self.extract_tree([img_rgb])
+        cropped_trees = self.extract_tree([img_rgb_resized])
         cleaned_trees = self.clean_tree(cropped_trees)
         nodes_by_image = self.detect_nodes(cleaned_trees)
-        texts_by_image = self.detect_texts([img_rgb])
+        texts_by_image = self.detect_texts([img_rgb_resized])
 
-        newick = self.build_newick(nodes_by_image[0][0], nodes_by_image[0][1], texts_by_image[0])
+        newick = self.build_newick(nodes_by_image[0], texts_by_image[0])
 
         print(f"Conversion finished")
         return newick
 
-    def load_and_preprocess(self, image_path):
+    def load_and_preprocess(self, path_or_array):
         print("Loading and Preprocessing image...")
-        img_rgb, img_tensor, (H, W) = load_and_preprocess_image(image_path, size=(1500, 1500))
+        img_rgb, img_tensor, (H, W) = load_and_preprocess_image(path_or_array, size=(1500, 1500))
         print(f"Image loaded: original size (H={H}, W={W}), tensor shape: {img_tensor.shape}")
         return img_rgb, img_tensor, (H, W)
 

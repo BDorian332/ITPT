@@ -5,7 +5,7 @@ import argparse
 from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).parents[1]
-GUI_MAIN = PROJECT_ROOT / "gui_v0" / "main.py"
+GUI_MAIN = PROJECT_ROOT / "gui_v1" / "main.py"
 MODELS_SRC_DIR = PROJECT_ROOT / "itpt" / "_data" / "models"
 MODELS_TO_INCLUDE = ["v1"]
 
