@@ -1,8 +1,9 @@
+import importlib
 from importlib import resources
 from itpt.core import Model
 
 _REGISTRY = {}
-BLACKLISTED_MODELS = ["v0"]
+_WHITELIST = ["v1"]
 
 def _scan_models():
     global _REGISTRY
@@ -11,7 +12,7 @@ def _scan_models():
     models_package = "itpt._data.models"
 
     for model_key in resources.contents(models_package):
-        if resources.is_resource(models_package, model_key) or model_key in BLACKLISTED_MODELS:
+        if resources.is_resource(models_package, model_key) or model_key not in _WHITELIST:
             continue
 
         model_package = f"{models_package}.{model_key}"

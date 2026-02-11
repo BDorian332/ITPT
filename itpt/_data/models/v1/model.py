@@ -11,38 +11,45 @@ class v1(Model):
     def __init__(self):
         super().__init__()
         self._metadata["name"] = "V1"
-        self._metadata["description"] = "Version 1"
+        self._metadata["description"] = "Cropping + Cleaning + Heatmap"
         self._metadata["version"] = 1
         self.cropping_model = CroppingModel()
         self.denoising_model = DenoisingModel()
         self.texts_detector_model = None
 
-    def load(self, device="cpu"):
+    def load(self, cropping_model_weights_path=None, denoising_model_weights_path=None):
         current_dir = os.path.dirname(os.path.abspath(__file__))
+        device = "cpu"
 
-        self.cropping_model.load_state_dict(torch.load(os.path.join(current_dir, "weights/cropping_model.pth"), map_location=device))
-        self.denoising_model.load_state_dict(torch.load(os.path.join(current_dir, "weights/denoising_model.pth"), map_location=device))
+        if cropping_model_weights_path is None:
+            cropping_model_weights_path = os.path.join(current_dir, "weights/cropping_model.pth")
+        if denoising_model_weights_path is None:
+            denoising_model_weights_path = os.path.join(current_dir, "weights/denoising_model.pth")
+
+        self.cropping_model.load_state_dict(torch.load(cropping_model_weights_path, map_location=device))
+        self.denoising_model.load_state_dict(torch.load(denoising_model_weights_path, map_location=device))
 
         self.cropping_model.eval()
         self.denoising_model.eval()
         self.texts_detector_model = get_texts_detector_model()
 
-        print(f"Models loaded")
+        print("Models loaded")
         self._loaded = True
 
     def convert(self, image_path):
         self.ensure_loaded()
 
         img_rgb, img_tensor, (H, W) = self.load_and_preprocess(image_path)
-        cropped_tree = self.extract_tree(img_rgb)
-        cleaned_tree = self.clean_tree(cropped_tree)
-        #nodes, corners = self.detect_nodes(cleaned_tree)
-        #nodes, corners = self.correct_nodes(nodes, corners)
-        texts = self.detect_texts(img_rgb)
-        newick = self.build_newick(nodes, corners, texts)
+
+        cropped_trees = self.extract_tree([img_rgb])
+        cleaned_trees = self.clean_tree(cropped_trees)
+        nodes_by_image = self.detect_nodes(cleaned_trees)
+        texts_by_image = self.detect_texts([img_rgb])
+
+        newick = self.build_newick(nodes_by_image[0][0], nodes_by_image[0][1], texts_by_image[0])
 
         print(f"Conversion finished")
-        return newick.to_string()
+        return newick
 
     def load_and_preprocess(self, image_path):
         print("Loading and Preprocessing image...")
@@ -50,38 +57,29 @@ class v1(Model):
         print(f"Image loaded: original size (H={H}, W={W}), tensor shape: {img_tensor.shape}")
         return img_rgb, img_tensor, (H, W)
 
-    def extract_tree(self, img_rgb):
-        print("Extracting tree...")
-        trees = extract_tree_from_image([img_rgb], self.cropping_model, (500, 500))
-        tree = trees[0]
-        print("Tree obtained, shape:", tree.shape)
-        return tree
+    def extract_tree(self, imgs_rgb):
+        print("Extracting trees...")
+        trees = extract_tree_from_image(imgs_rgb, self.cropping_model, (500, 500))
+        print("Trees obtained, shape:", trees.shape)
+        return trees
 
-    def clean_tree(self, cropped_tree):
-        print("Cleaning tree...")
-        cleaned_trees = denoise_image([cropped_tree], self.denoising_model, (512, 512))
-        cleaned_tree = cleaned_trees[0]
-        print("Cleaned tree obtained, shape:", cleaned_tree.shape)
-        return cleaned_tree
+    def clean_tree(self, cropped_trees):
+        print("Cleaning trees...")
+        cleaned_trees = denoise_image(cropped_trees, self.denoising_model, (512, 512))
+        print("Cleaned trees obtained, shape:", cleaned_trees.shape)
+        return cleaned_trees
 
-    def detect_nodes(self, cleaned_tree):
+    def detect_nodes(self, cleaned_trees):
         print("Detecting nodes...")
-        #nodes, corners = ?
-        #print(f"Detected: {len(nodes)} nodes, {len(corners)} corners")
-        return nodes, corners
+        #...
+        print(f"Detected nodes shape: {nodes_by_image}")
+        return nodes_by_image
 
-    def correct_nodes(self, nodes, corners):
-        print("Correcting nodes...")
-        #nodes, corners = ?
-        #print(f"Now: {len(nodes)} nodes, {len(corners)} corners")
-        return nodes, corners
-
-    def detect_texts(self, img_rgb):
+    def detect_texts(self, imgs_rgb):
         print("Detecting texts...")
-        texts_by_image = detect_texts(img_rgb.unsqueeze(0), self.texts_detector_model)
-        texts = texts_by_image[0]
-        print("Found texts: ", texts)
-        return texts
+        texts_by_image = detect_texts(imgs_rgb, self.texts_detector_model)
+        print("Found texts shape: ", texts_by_image.shape)
+        return texts_by_image
 
     def build_newick(self, nodes, corners, texts):
         print("Building Newick...")
