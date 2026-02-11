@@ -52,6 +52,26 @@ root/
 
 ## Usage
 
+### Installing ITPT from a `.whl` file
+
+You can install ITPT directly from a pre-built wheel file (`.whl`). Follow these steps:
+
+1. **Download the latest release**
+
+Go to the [ITPT releases page](https://github.com/BDorian332/ITPT/releases) and download the `.whl` file from the latest release.
+
+2. **Run the installation command**
+
+```bash
+pip install <path to the .whl just downloaded>
+```
+
+3. **Verify the installation**
+
+```bash
+pip show itpt
+```
+
 ### For Users
 
 #### Basic Usage
@@ -76,6 +96,7 @@ print(newick.to_string())
 **Methods**
 
 1. **Loading the Model**
+
 - Method: `load(cropping_model_weights_path=None, denoising_model_weights_path=None, nodesdetection_model_weights_path=None)`
 - Description: Loads the model weights for cropping, denoising and nodes detection neural networks, and initializes the OCR text detection model.
 - Parameters:
@@ -85,6 +106,7 @@ print(newick.to_string())
 - Notes: Sets the internal flag `_loaded = True` after successful loading.
 
 2. **Conversion of Tree Images**
+
 - Method: `convert(image_path)`
 - Description: Converts an input image containing a phylogenetic tree into a Newick format string via a sequential pipeline.
 - Parameters:
@@ -99,6 +121,7 @@ print(newick.to_string())
 - Returns: `Newick` object representing the tree.
 
 3. **Supporting Methods**
+
 - `load_and_preprocess(image_path)`:
   - Loads the image and prepares a tensor.
   - Returns `(img_rgb, img_tensor, (H, W))`.
