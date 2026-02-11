@@ -52,7 +52,9 @@ root/
 
 ## Usage
 
-### Installing ITPT from a `.whl` file
+### For Users
+
+#### Installing ITPT from a `.whl` file
 
 You can install ITPT directly from a pre-built wheel file (`.whl`). Follow these steps:
 
@@ -71,8 +73,6 @@ pip install <path to the .whl just downloaded>
 ```bash
 pip show itpt
 ```
-
-### For Users
 
 #### Basic Usage
 
