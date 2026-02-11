@@ -13,14 +13,6 @@ authors = [
     { name = "Reyne Matteo", email = "reynematte@cy-tech.fr" }
 ]
 requires-python = ">=3.13"
-dependencies = [
-  "torch",
-  "torchvision",
-  "numpy",
-  "pillow",
-  "opencv-python",
-  "python-doctr"
-]
 
 [tool.setuptools.packages.find]
 where = ["."]
@@ -38,6 +30,19 @@ itpt-clean = "tools.clean:main"
 itpt-generate-models = "tools.generate_models:main"
 itpt-run = "tools.run:main"
 
+[[tool.poetry.source]]
+name = "pytorch_cpu"
+url = "https://download.pytorch.org/whl/cpu"
+priority = "explicit"
+
+[tool.poetry.dependencies]
+numpy = "*"
+pillow = "*"
+opencv-python = "*"
+python-doctr = "*"
+torch = { version = ">=2.10.0,<3.0.0", source = "pytorch_cpu" }
+torchvision = { version = ">=0.25.0,<0.26.0", source = "pytorch_cpu" }
+
 [dependency-groups]
 dev = [
     "nbconvert",
@@ -47,17 +52,11 @@ dev = [
     "ipywidgets",
     "tqdm",
     "matplotlib",
-    "opencv-python",
-    "torch",
-    "torchvision",
     "torchaudio",
     "easyocr",
     "paddlepaddle==3.2.2",
     "paddleocr==3.3.3",
-    "scikit-learn",
-    "numpy",
-    "python-doctr",
-    "pillow"
+    "scikit-learn"
 ]
 gui = [
     "pyinstaller"

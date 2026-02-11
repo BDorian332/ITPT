@@ -31,7 +31,7 @@ jobs:
         run: pip install poetry
 
       - name: Install dependencies
-        run: poetry install --with gui
+        run: poetry install --without dev --with gui
 
       - name: Build app
         run: |
@@ -41,10 +41,14 @@ jobs:
       - name: Prepare artifacts
         shell: bash
         run: |
-          mkdir artifacts
+          mkdir -p artifacts
           for f in dist/*; do
             base=$(basename "$f")
-            cp "$f" "artifacts/${base}-${{ runner.os }}"
+            if [ -d "$f" ]; then
+              cp -r "$f" "artifacts/${base}-${{ runner.os }}"
+            else
+              cp "$f" "artifacts/${base}-${{ runner.os }}"
+            fi
           done
 
       - name: Upload artifacts
