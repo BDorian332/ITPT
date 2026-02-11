@@ -12,7 +12,7 @@ authors = [
     { name = "Chamaillard Lucas", email = "lchamaillard.lucas@gmail.com" },
     { name = "Reyne Matteo", email = "reynematte@cy-tech.fr" }
 ]
-requires-python = ">=3.13"
+requires-python = ">=3.13,<3.15"
 
 [tool.setuptools.packages.find]
 where = ["."]
@@ -40,8 +40,14 @@ numpy = "*"
 pillow = "*"
 opencv-python = "*"
 python-doctr = "*"
-torch = { version = ">=2.10.0,<3.0.0", source = "pytorch_cpu" }
-torchvision = { version = ">=0.25.0,<0.26.0", source = "pytorch_cpu" }
+torch = [
+    { version = ">=2.10.0,<3.0.0", markers = "sys_platform == 'darwin'" },
+    { version = ">=2.10.0,<3.0.0", markers = "sys_platform != 'darwin'", source = "pytorch_cpu" }
+]
+torchvision = [
+    { version = ">=0.25.0,<0.26.0", markers = "sys_platform == 'darwin'" },
+    { version = ">=0.25.0,<0.26.0", markers = "sys_platform != 'darwin'", source = "pytorch_cpu" }
+]
 
 [dependency-groups]
 dev = [
