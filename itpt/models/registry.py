@@ -1,9 +1,8 @@
-import importlib.util
 from importlib import resources
 from itpt.core import Model
 
 _REGISTRY = {}
-BLACKLISTED_MODELS = []
+BLACKLISTED_MODELS = ["v0"]
 
 def _scan_models():
     global _REGISTRY

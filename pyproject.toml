@@ -13,7 +13,14 @@ authors = [
     { name = "Reyne Matteo", email = "reynematte@cy-tech.fr" }
 ]
 requires-python = ">=3.13"
-dependencies = []
+dependencies = [
+  "torch",
+  "torchvision",
+  "numpy",
+  "pillow",
+  "opencv-python",
+  "python-doctr"
+]
 
 [tool.setuptools.packages.find]
 where = ["."]
