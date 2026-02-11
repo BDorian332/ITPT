@@ -41,7 +41,7 @@ def build_gui():
     cmd = [
         "pyinstaller",
         "--onefile",
-        "--windowed",
+        #"--windowed",
         "--clean",
         "--noconfirm",
         "--collect-all", "torch",

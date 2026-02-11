@@ -1,6 +1,6 @@
-import os
 import torch
 import cv2
+from pathlib import Path
 from itpt.core import Model
 from itpt.core import build_newick
 from .preprocessing.cropping import extract_tree_from_image, CroppingModel
@@ -17,14 +17,16 @@ class v1(Model):
         self.denoising_model = DenoisingModel()
         self.texts_detector_model = None
 
-    def load(self, cropping_model_weights_path=None, denoising_model_weights_path=None):
-        current_dir = os.path.dirname(os.path.abspath(__file__))
+    def load(self, cropping_model_weights_path=None, denoising_model_weights_path=None, nodesdetection_model_weights_path=None):
+        current_dir = Path(__file__).resolve().parent
         device = "cpu"
 
         if cropping_model_weights_path is None:
-            cropping_model_weights_path = os.path.join(current_dir, "weights/cropping_model.pth")
+            cropping_model_weights_path = self.ensure_weights(current_dir / "weights" / "cropping_model.pth", "?", self._metadata["name"])
         if denoising_model_weights_path is None:
-            denoising_model_weights_path = os.path.join(current_dir, "weights/denoising_model.pth")
+            denoising_model_weights_path = self.ensure_weights(current_dir / "weights" / "denoising_model.pth", "?", self._metadata["name"])
+        if nodesdetection_model_weights_path is None:
+            nodesdetection_model_weights_path = self.ensure_weights(current_dir / "weights" / "nodesdetection_model.pth", "?", self._metadata["name"])
 
         self.cropping_model.load_state_dict(torch.load(cropping_model_weights_path, map_location=device))
         self.denoising_model.load_state_dict(torch.load(denoising_model_weights_path, map_location=device))
