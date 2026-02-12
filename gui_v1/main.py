@@ -208,14 +208,14 @@ class ITPTGUI:
                 ent.insert(0, default_val)
 
             saved_url = self.weights_overrides.get(f"{key}_url", default_url)
-            ttk.Label(frame, text="URL:").grid(row=0, column=0, sticky="w")
+            ttk.Label(frame, text="URL:").grid(row=0, column=0, sticky="w", padx=5)
             url_ent = ttk.Entry(frame)
             url_ent.insert(0, saved_url)
             url_ent.grid(row=0, column=1, sticky="ew", padx=5)
             ttk.Button(frame, text="Default", command=lambda ent=url_ent, d=default_url: reset_ent(ent, d)).grid(row=0, column=2, sticky="w", padx=5)
 
             saved_path = self.weights_overrides.get(f"{key}_path", "")
-            ttk.Label(frame, text="Local Path:").grid(row=1, column=0, sticky="w")
+            ttk.Label(frame, text="Local Path (has priority):").grid(row=1, column=0, sticky="w", padx=5)
             path_ent = ttk.Entry(frame)
             path_ent.insert(0, saved_path)
             path_ent.grid(row=1, column=1, sticky="ew", padx=5)
@@ -230,7 +230,7 @@ class ITPTGUI:
             path_btns_frame.grid(row=1, column=2, sticky="w")
 
             ttk.Button(path_btns_frame, text="Default", command=lambda ent=path_ent: reset_ent(ent, "")).pack(side="left", padx=5)
-            ttk.Button(path_btns_frame, text="...", command=browse_weights).pack(side="left", padx=5)
+            ttk.Button(path_btns_frame, text="...", width=3, command=browse_weights).pack(side="left", padx=5)
 
             frame.columnconfigure(1, weight=1)
             entries[key] = {"url_widget": url_ent, "path_widget": path_ent}
@@ -284,14 +284,11 @@ class ITPTGUI:
     def on_mouse_move(self, event):
         self.update_cursor(event)
 
-        dx = abs(event.x - self.mouse_x)
-        dy = abs(event.y - self.mouse_y)
+        self.mouse_x = event.x
+        self.mouse_y = event.y
 
         if self.add_mode == "brush":
-            if dx > 2 or dy > 2:
-                self.mouse_x = event.x
-                self.mouse_y = event.y
-                self.redraw_preview()
+            self.redraw_preview()
 
     def on_mouse_wheel(self, event):
         if self.add_mode == "brush":
@@ -753,9 +750,9 @@ class ITPTGUI:
 
             model = get_model(model_name)
             model.load(
-                cropping_model_weights_path_or_url=self.weights_overrides.get("Cropping"),
-                denoising_model_weights_path_or_url=self.weights_overrides.get("Denoising"),
-                nodesdetection_model_weights_path_or_url=self.weights_overrides.get("Nodes Detection")
+                cropping_model_weights_path_or_url=self.weights_overrides.get("Cropping Model"),
+                denoising_model_weights_path_or_url=self.weights_overrides.get("Denoising Model"),
+                nodesdetection_model_weights_path_or_url=self.weights_overrides.get("Nodes Detection Model")
             )
 
             input_img = self.apply_mask(self.preview_image, self.brush_mask)
