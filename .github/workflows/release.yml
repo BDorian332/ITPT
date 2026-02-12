@@ -47,6 +47,7 @@ jobs:
               cp dist/gui artifacts/gui-Linux
               cp dist/itpt-0-py3-none-any.whl artifacts/itpt-0-py3-none-any.whl
           elif [[ "${RUNNER_OS}" == "macOS" ]]; then
+              ls -l dist
               zip -r artifacts/gui-macOS.zip dist/gui.app
           elif [[ "${RUNNER_OS}" == "Windows" ]]; then
               cp dist/gui.exe artifacts/gui-Windows.exe
