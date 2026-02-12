@@ -28,12 +28,15 @@ jobs:
           python-version: "3.13"
 
       - name: Install Poetry
+        shell: bash
         run: pip install poetry
 
       - name: Install dependencies
+        shell: bash
         run: poetry install --without dev --with gui
 
       - name: Build app
+        shell: bash
         run: |
           poetry run itpt-build --lib
           for gui_ver in v1 v2; do
@@ -55,9 +58,9 @@ jobs:
               cp dist/gui-${gui_ver} artifacts/gui-${gui_ver}-Linux
             elif [[ "${RUNNER_OS}" == "macOS" ]]; then
               if [[ -d dist/gui-${gui_ver}.app ]]; then
-                # If --windowed
                 zip -r artifacts/gui-${gui_ver}-macOS.zip dist/gui-${gui_ver}.app
-              else
+              fi
+              if [[ -f dist/gui-${gui_ver} ]]; then
                 cp dist/gui-${gui_ver} artifacts/gui-${gui_ver}-macOS
               fi
             elif [[ "${RUNNER_OS}" == "Windows" ]]; then

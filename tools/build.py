@@ -2,6 +2,7 @@ import os
 import sys
 import subprocess
 import argparse
+import platform
 from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).parents[1]
@@ -16,7 +17,7 @@ def build_lib():
         print(f"Failed to build library: {e}")
         sys.exit(1)
 
-def build_gui(version="v1"):
+def build_gui(version="v1", debug=False):
     gui_dir = PROJECT_ROOT / f"gui_{version}"
     gui_main = gui_dir / "main.py"
 
@@ -39,10 +40,21 @@ def build_gui(version="v1"):
 
     cmd = [
         "pyinstaller",
-        "--onefile",
-        "--windowed",
         "--clean",
         "--noconfirm",
+    ]
+
+    if system == "Darwin":
+        cmd += ["--onedir"]
+    else:
+        cmd += ["--onefile"]
+
+    if debug:
+        cmd += ["--console"]
+    else:
+        cmd += ["--windowed"]
+
+    cmd += [
         "--collect-all", "torch",
         "--collect-all", "cv2",
         "--collect-all", "doctr",
