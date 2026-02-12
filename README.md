@@ -97,12 +97,12 @@ print(newick.to_string())
 
 1. **Loading the Model**
 
-- Method: `load(cropping_model_weights_path=None, denoising_model_weights_path=None, nodesdetection_model_weights_path=None)`
+- Method: `load(cropping_model_weights_path_or_url=None, denoising_model_weights_path_or_url=None, nodesdetection_model_weights_path_or_url=None)`
 - Description: Loads the model weights for cropping, denoising and nodes detection neural networks, and initializes the OCR text detection model.
 - Parameters:
-  - `cropping_model_weights_path` (str, optional): path to the pre-trained cropping model weights. Defaults to `weights/cropping_model.pth` relative to the model directory.
-  - `denoising_model_weights_path` (str, optional): path to the pre-trained denoising model weights. Defaults to `weights/denoising_model.pth` relative to the model directory.
-  - `nodesdetection_model_weights_path` (str, optional): path to the pre-trained nodes detection model weights. Defaults to `weights/nodesdetection_model_weights.pth` relative to the model directory.
+  - `cropping_model_weights_path_or_url` (str, optional): path or URL to the pre-trained cropping model weights. Defaults to `weights/cropping_model.pth` relative to the model directory in the library.
+  - `denoising_model_weights_path_or_url` (str, optional): path or URL to the pre-trained denoising model weights. Defaults to `weights/denoising_model.pth` relative to the model directory in the library.
+  - `nodesdetection_model_weights_path_or_url` (str, optional): path or URL to the pre-trained nodes detection model weights. Defaults to `weights/nodesdetection_model_weights.pth` relative to the model directory in the library.
 - Notes: Sets the internal flag `_loaded = True` after successful loading.
 
 2. **Conversion of Tree Images**
