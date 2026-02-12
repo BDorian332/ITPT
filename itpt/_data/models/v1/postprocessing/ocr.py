@@ -2,7 +2,7 @@ import numpy as np
 from typing import Dict, List
 from doctr.models import ocr_predictor
 
-def get_texts_detector_model():
+def get_textsDetector_model():
     return ocr_predictor(pretrained=True)
 
 def detect_texts(images: List[np.ndarray], predictor) -> List[List[dict]]:

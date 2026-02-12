@@ -39,13 +39,13 @@ class ITPTGUI:
 
         # ---- Points, Texts and Segments ----
 
-        self.points = []  # list of Point objects
-        self.selected_point = None  # for drag
+        self.points = [] # list of Point objects
+        self.selected_point = None # for drag
 
         self.texts = []
         self.selected_text_id = None
 
-        self.add_mode = None  # "node", "corner", "text" ou None
+        self.add_mode = None # "node", "corner", "text" ou None
 
         self.segments = []
 
@@ -81,6 +81,9 @@ class ITPTGUI:
             self.model_name_var = tk.StringVar(value=self.model_names[0])
             self.model_combobox = ttk.Combobox(root, textvariable=self.model_name_var, values=self.model_names, state="readonly")
         self.model_combobox.grid(row=2, column=1, sticky="ew", padx=5, pady=5)
+        self.settings_btn = ttk.Button(root, text="Settings", command=self.open_model_settings, state="disabled" if not self.model_names else "enabled")
+        self.settings_btn.grid(row=2, column=2, padx=5, pady=5, sticky="ew")
+        self.weights_overrides = {}
 
         # Canvas
         ttk.Label(root, text="Image preview:").grid(row=3, column=0, columnspan=3, sticky="w", padx=5, pady=5)
@@ -163,6 +166,78 @@ class ITPTGUI:
         self.current_model_module = model_module
         self.current_model_steps = steps
 
+    def open_model_settings(self):
+        model_name = self.model_name_var.get()
+        if not model_name or model_name == "No models":
+            return
+
+        model = get_model(model_name)
+        metadata = model.get_metadata()
+        weights_urls = metadata.get("weights_urls", {})
+
+        popup = tk.Toplevel(self.root)
+        popup.title(f"Settings - {model_name}")
+        popup.geometry("600x450")
+        popup.grab_set()
+
+        entries = {}
+
+        main_container = ttk.Frame(popup)
+        main_container.pack(fill="both", expand=True)
+
+        weights_group = ttk.LabelFrame(main_container)
+        weights_group.pack(fill="x", padx=5, pady=5)
+        bold_label = tk.Label(weights_group, text=" Weights Configuration ", font=("Arial", 10, "bold"))
+        weights_group.configure(labelwidget=bold_label)
+
+        for i, (key, default_url) in enumerate(weights_urls.items()):
+            frame = ttk.LabelFrame(weights_group, text=key)
+            frame.pack(fill="x", pady=5, padx=5)
+
+            def reset_ent(ent, default_val):
+                ent.delete(0, tk.END)
+                ent.insert(0, default_val)
+
+            saved_url = self.weights_overrides.get(f"{key}_url", default_url)
+            ttk.Label(frame, text="URL:").grid(row=0, column=0, sticky="w")
+            url_ent = ttk.Entry(frame)
+            url_ent.insert(0, saved_url)
+            url_ent.grid(row=0, column=1, sticky="ew", padx=5)
+            ttk.Button(frame, text="Default", width=7, command=lambda ent=url_ent, d=default_url: reset_ent(ent, d)).grid(row=0, column=2, sticky="w", padx=5)
+
+            saved_path = self.weights_overrides.get(f"{key}_path", "")
+            ttk.Label(frame, text="Local Path:").grid(row=1, column=0, sticky="w")
+            path_ent = ttk.Entry(frame)
+            path_ent.insert(0, saved_path)
+            path_ent.grid(row=1, column=1, sticky="ew", padx=5)
+
+            def browse_weights():
+                p = filedialog.askopenfilename(filetypes=[("Weights", "*.pth *.bin")])
+                if p:
+                    path_ent.delete(0, tk.END)
+                    path_ent.insert(0, p)
+
+            path_btns_frame = ttk.Frame(frame)
+            path_btns_frame.grid(row=1, column=2, sticky="w")
+
+            ttk.Button(path_btns_frame, text="Default", width=7, command=lambda ent=path_ent: reset_ent(ent, "")).pack(side="left", padx=5)
+            ttk.Button(path_btns_frame, text="...", width=3, command=browse_weights).pack(side="left", padx=5)
+
+            frame.columnconfigure(1, weight=1)
+            entries[key] = {"url_widget": url_ent, "path_widget": path_ent}
+
+        def save():
+            for key, widgets in entries.items():
+                current_url = widgets["url_widget"].get().strip()
+                current_path = widgets["path_widget"].get().strip()
+
+                self.weights_overrides[f"{key}_url"] = current_url
+                self.weights_overrides[f"{key}_path"] = current_path
+                self.weights_overrides[key] = current_path if current_path else current_url
+            popup.destroy()
+
+        ttk.Button(popup, text="Save Configuration", command=save).pack(padx=5, pady=5)
+
     # ---------- Events ----------
 
     def bind_events(self):
@@ -194,6 +269,7 @@ class ITPTGUI:
 
     def on_model_change(self, event=None):
         self.update_steps_ui()
+        self.weights_overrides = {}
 
     # ---------- Toggle modes ----------
 
@@ -545,7 +621,7 @@ class ITPTGUI:
             output_file = self.output_entry.get().strip()
             model_name = self.model_name_var.get()
 
-            if not input_path or model_name not in self.model_names:
+            if not input_path or not model_name or model_name == "No models":
                 raise ValueError("Invalid input or model")
 
             img_w = self.preview_image.width
@@ -557,7 +633,11 @@ class ITPTGUI:
             }]
 
             model = get_model(model_name)
-            model.load()
+            model.load(
+                cropping_model_weights_path_or_url=self.weights_overrides.get("Cropping"),
+                denoising_model_weights_path_or_url=self.weights_overrides.get("Denoising"),
+                nodesdetection_model_weights_path_or_url=self.weights_overrides.get("Nodes Detection")
+            )
 
             if self.current_model_module is None:
                 newick = model.convert(np.array(self.preview_image))

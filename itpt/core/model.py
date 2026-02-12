@@ -9,33 +9,46 @@ class Model(ABC):
             "name": "Unknown",
             "description": "No description.",
             "input_spec": "Unknown",
-            "version": 0
+            "version": 0,
+            "weights_urls": {}
         }
 
     def get_metadata(self):
         return self._metadata
 
-    def ensure_weights(self, weights_path, url, model_name):
+    def get_model_cache_path(self):
+        return Path.home() / ".cache" / "itpt" / "weights" / self.get_metadata()["name"]
+
+    def download_weights(self, url, dest):
+        dest.parent.mkdir(parents=True, exist_ok=True)
+
+        if dest.exists():
+            return dest
+
+        print(f"Downloading weights from {url} to {dest}")
+        try:
+            urllib.request.urlretrieve(url, dest)
+            print(f"Downloaded {weights_path.name} successfully.")
+        except Exception as e:
+            raise RuntimeError(f"Failed to download {dest.name} from {url}: {e}")
+
+        return dest
+
+    def ensure_weights(self, weights_path, url):
         print(f"Checking {weights_path.name}")
         if weights_path.exists():
             print("Using local file")
             return weights_path
 
-        home_dir = Path.home()
-        fallback_dir = home_dir / ".cache" / "itpt" / "weights" / model_name
-        fallback_dir.mkdir(parents=True, exist_ok=True)
+        fallback_dir = self.get_model_cache_path()
         fallback_path = fallback_dir / weights_path.name
 
         if fallback_path.exists():
             print("Using cached file")
             return fallback_path
 
-        print(f"Weights not found. Downloading {weights_path.name} for model {model_name} into {fallback_path}...")
-        try:
-            urllib.request.urlretrieve(url, fallback_path)
-            print(f"Downloaded {weights_path.name} successfully.")
-        except Exception as e:
-            raise RuntimeError(f"Failed to download {weights_path.name} from {url}: {e}")
+        print(f"Weights not found.")
+        self.download_weights(url, fallback_path)
 
         return fallback_path
 

@@ -5,35 +5,58 @@ from itpt.core import Model
 from itpt.core import build_newick
 from .preprocessing.cropping import extract_tree_from_image, CroppingModel
 from .preprocessing.denoising import denoise_image, load_and_preprocess_image, DenoisingModel, img_to_tensor, img_to_gray
-from .postprocessing.ocr import detect_texts, get_texts_detector_model
+from .postprocessing.ocr import detect_texts, get_textsDetector_model
 
 class v1(Model):
     def __init__(self):
         super().__init__()
-        self._metadata["name"] = "V1"
-        self._metadata["description"] = "Cropping + Cleaning + Heatmap"
-        self._metadata["version"] = 1
+        self._metadata.update({
+            "name": "V1",
+            "description": "Cropping + Cleaning + Heatmap",
+            "version": 1,
+            "weights_urls": {
+                "Cropping Model": "https://example.com/cropping.pth",
+                "Denoising Model": "https://example.com/denoising.pth",
+                "Nodes Detection Model": "https://example.com/nodesDetection.pth"
+            }
+        })
         self.cropping_model = CroppingModel()
         self.denoising_model = DenoisingModel()
-        self.texts_detector_model = None
+        self.nodesDetection_model = None
+        self.textsDetector_model = None
 
-    def load(self, cropping_model_weights_path=None, denoising_model_weights_path=None, nodesdetection_model_weights_path=None):
+    def load(self, cropping_model_weights_path_or_url=None, denoising_model_weights_path_or_url=None, nodesdetection_model_weights_path_or_url=None):
         current_dir = Path(__file__).resolve().parent
+        weights_dir = current_dir / "weights"
         device = "cpu"
 
-        if cropping_model_weights_path is None:
-            cropping_model_weights_path = self.ensure_weights(current_dir / "weights" / "cropping_model.pth", "?", self._metadata["name"])
-        if denoising_model_weights_path is None:
-            denoising_model_weights_path = self.ensure_weights(current_dir / "weights" / "denoising_model.pth", "?", self._metadata["name"])
-        if nodesdetection_model_weights_path is None:
-            nodesdetection_model_weights_path = self.ensure_weights(current_dir / "weights" / "nodesdetection_model.pth", "?", self._metadata["name"])
+        if cropping_model_weights_path_or_url is None:
+            cropping_model_weights_path = self.ensure_weights(weights_dir / "cropping_model.pth", self.get_metadata()["weights_urls"]["Cropping Model"])
+        elif cropping_model_weights_path_or_url.startswith(("http://", "https://")):
+            cropping_model_weights_path = self.download_weights(cropping_model_weights_path_or_url, self.get_model_cache_path() / "cropping_model.pth")
+        else:
+            cropping_model_weights_path = Path(cropping_model_weights_path_or_url)
+
+        if denoising_model_weights_path_or_url is None:
+            denoising_model_weights_path = self.ensure_weights(weights_dir / "denoising_model.pth", self.get_metadata()["weights_urls"]["Denoising Model"])
+        elif denoising_model_weights_path_or_url.startswith(("http://", "https://")):
+            denoising_model_weights_path = self.download_weights(denoising_model_weights_path_or_url, self.get_model_cache_path() / "denoising_model.pth")
+        else:
+            denoising_model_weights_path = Path(denoising_model_weights_path_or_url)
+
+        if nodesdetection_model_weights_path_or_url is None:
+            nodesdetection_model_weights_path = self.ensure_weights(weights_dir / "nodesDetection_model.pth", self.get_metadata()["weights_urls"]["Nodes Detection Model"])
+        elif nodesdetection_model_weights_path_or_url.startswith(("http://", "https://")):
+            nodesdetection_model_weights_path = self.download_weights(nodesdetection_model_weights_path_or_url, self.get_model_cache_path() / "nodesDetection_model.pth")
+        else:
+            nodesdetection_model_weights_path = Path(nodesdetection_model_weights_path_or_url)
 
         self.cropping_model.load_state_dict(torch.load(cropping_model_weights_path, map_location=device))
         self.denoising_model.load_state_dict(torch.load(denoising_model_weights_path, map_location=device))
 
         self.cropping_model.eval()
         self.denoising_model.eval()
-        self.texts_detector_model = get_texts_detector_model()
+        self.textsDetector_model = get_textsDetector_model()
 
         print("Models loaded")
         self._loaded = True
@@ -79,7 +102,7 @@ class v1(Model):
 
     def detect_texts(self, imgs_rgb):
         print("Detecting texts...")
-        texts_by_image = detect_texts(imgs_rgb, self.texts_detector_model)
+        texts_by_image = detect_texts(imgs_rgb, self.textsDetector_model)
         print("Found texts shape: ", texts_by_image.shape)
         return texts_by_image
 
