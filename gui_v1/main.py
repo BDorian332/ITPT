@@ -5,7 +5,7 @@ import importlib
 import numpy as np
 from tkinter import ttk, filedialog, messagebox
 from pathlib import Path
-from PIL import Image, ImageTk
+from PIL import Image, ImageTk, ImageDraw
 from itpt.models import get_list, get_model
 from itpt.core.newick import Point, scale_points
 from itpt.core.branches import build_segments, scale_segments
@@ -28,16 +28,16 @@ class ITPTGUI:
 
         self.preview_image = None
         self.zoomed_image = None
-        self.tk_image = None
-        self.zoom = 1.0
-        self.last_zoom = self.zoom
+        self.zoom_updated = False
+        self.preview_image_masked = None
+        self.mask_updated = False
         self.pan_x = 0
         self.pan_y = 0
-        self.last_pan = (self.pan_x, self.pan_y)
+        self.tk_image = None
         self.drag_start = None
         self.drag_type = None # "left" or "right"
 
-        # ---- Points, Texts and Segments ----
+        # ---- Points, Texts, Segments and Brush ----
 
         self.points = [] # list of Point objects
         self.selected_point = None # for drag
@@ -45,7 +45,10 @@ class ITPTGUI:
         self.texts = []
         self.selected_text_id = None
 
-        self.add_mode = None # "node", "corner", "text" ou None
+        self.brush_mask = None
+        self.brush_size = 20
+
+        self.add_mode = None # "node", "corner", "text", "brush" or None
 
         self.segments = []
 
@@ -104,6 +107,8 @@ class ITPTGUI:
         self.clear_points_btn.grid(row=0, column=2, padx=5, pady=5, sticky="w")
         self.add_text_btn.grid(row=0, column=3, padx=5, pady=5, sticky="w")
         self.clear_texts_btn.grid(row=0, column=4, padx=5, pady=5, sticky="w")
+        self.brush_btn = ttk.Button(edit_buttons_frame, text="Brush", command=lambda: self.toggle_mode("brush"), state="disabled")
+        self.brush_btn.grid(row=0, column=5, padx=5, pady=5, sticky="w")
 
         # Output text
         ttk.Label(root, text="Generated Newick:").grid(row=6, column=0, columnspan=3, sticky="w", padx=5, pady=5)
@@ -283,6 +288,7 @@ class ITPTGUI:
         self.add_node_btn.state(["pressed"] if self.add_mode=="node" else ["!pressed"])
         self.add_corner_btn.state(["pressed"] if self.add_mode=="corner" else ["!pressed"])
         self.add_text_btn.state(["pressed"] if self.add_mode=="text" else ["!pressed"])
+        self.brush_btn.state(["pressed"] if self.add_mode=="brush" else ["!pressed"])
 
     # ---------- File ----------
 
@@ -305,7 +311,11 @@ class ITPTGUI:
         path = self.input_entry.get()
         try:
             self.preview_image = Image.open(path).convert("RGB")
+            self.zoomed_image = self.preview_image
             self.zoom = 1.0
+            self.zoom_updated = False
+            self.preview_image_masked = None
+            self.mask_updated = False
             self.pan_x = 0
             self.pan_y = 0
             self.add_node_btn.config(state="normal")
@@ -313,6 +323,9 @@ class ITPTGUI:
             self.clear_points_btn.config(state="normal")
             self.add_text_btn.config(state="normal")
             self.clear_texts_btn.config(state="normal")
+            self.brush_mask = Image.new("L", self.preview_image.size, 0)
+            self.brush_size = 200
+            self.brush_btn.config(state="normal")
         except Exception:
             self.preview_image = None
             self.add_node_btn.config(state="disabled")
@@ -320,8 +333,15 @@ class ITPTGUI:
             self.clear_points_btn.config(state="disabled")
             self.add_text_btn.config(state="disabled")
             self.clear_texts_btn.config(state="disabled")
+            self.brush_btn.config(state="disabled")
         self.points.clear()
-        self.redraw_preview()
+        self.redraw_preview(force=True)
+
+    def apply_mask(self, image, mask=None):
+        if mask is not None:
+            white_layer = Image.new("RGB", image.size, (255, 255, 255))
+            image = Image.composite(white_layer, image, mask)
+        return image
 
     def redraw_preview(self, event=None, force=False):
         self.preview_canvas.delete("all")
@@ -337,16 +357,21 @@ class ITPTGUI:
         self.base_ratio = base_ratio
 
         # Draw image
-        if force or self.zoomed_image is None or self.zoom != self.last_zoom:
-            new_w = int(self.preview_image.width * ratio)
-            new_h = int(self.preview_image.height * ratio)
-            self.zoomed_image = self.preview_image.resize((new_w, new_h), Image.NEAREST)
-            self.last_zoom = self.zoom
-            self.last_pan = None
+        display_img = self.preview_image.copy()
+        if force or self.mask_updated:
+            display_img = self.apply_mask(display_img, self.brush_mask)
 
-        if force or self.last_pan is None or self.last_pan != (self.pan_x, self.pan_y):
+        if force or self.preview_image_masked is None or self.mask_updated:
+            self.preview_image_masked = self.apply_mask(self.preview_image.copy(), self.brush_mask)
+            self.mask_updated = False
+            self.zoom_updated = True
+
+        if force or self.zoomed_image is None or self.zoom_updated:
+            new_w = int(img_w * ratio)
+            new_h = int(img_h * ratio)
+            self.zoomed_image = self.preview_image_masked.resize((new_w, new_h), Image.NEAREST)
             self.tk_image = ImageTk.PhotoImage(self.zoomed_image)
-            self.last_pan = (self.pan_x, self.pan_y)
+            self.zoom_updated = False
 
         self.preview_canvas.create_image(
             canvas_w//2 + self.pan_x,
@@ -398,21 +423,41 @@ class ITPTGUI:
     # ---------- Coordinate transforms ----------
 
     def screen_to_image(self, pt):
+        """
+        Convert coordinates from Canvas (screen) space to Image space (0,0 at top-left).
+        Takes into account canvas centering, panning, and zoom ratio.
+        """
         canvas_w = self.preview_canvas.winfo_width()
         canvas_h = self.preview_canvas.winfo_height()
         img_w = self.preview_image.width
         img_h = self.preview_image.height
+
+        # Calculate current effective ratio (base fitting ratio * user zoom)
         ratio = self.base_ratio * self.zoom
-        x = (pt[0] - canvas_w//2 - self.pan_x)/ratio
-        y = (pt[1] - canvas_h//2 - self.pan_y)/ratio
+
+        # 1. Subtract canvas center and pan offset
+        # 2. Divide by ratio to get distance in image pixels
+        # 3. Add half of image dimension to shift origin from Center to Top-Left
+        x = (pt[0] - canvas_w // 2 - self.pan_x) / ratio + img_w / 2
+        y = (pt[1] - canvas_h // 2 - self.pan_y) / ratio + img_h / 2
         return x, y
 
     def image_to_screen(self, pt):
+        """
+        Convert coordinates from Image space (0,0 at top-left) back to Canvas (screen) space.
+        Used for rendering points and segments correctly on the UI.
+        """
         canvas_w = self.preview_canvas.winfo_width()
         canvas_h = self.preview_canvas.winfo_height()
+        img_w = self.preview_image.width
+        img_h = self.preview_image.height
+
         ratio = self.base_ratio * self.zoom
-        x = canvas_w//2 + self.pan_x + pt.x * ratio
-        y = canvas_h//2 + self.pan_y + pt.y * ratio
+
+        # 1. Shift origin from Top-Left to Center by subtracting half dimensions
+        # 2. Multiply by ratio and add canvas center + pan offsets
+        x = canvas_w // 2 + self.pan_x + (pt.x - img_w / 2) * ratio
+        y = canvas_h // 2 + self.pan_y + (pt.y - img_h / 2) * ratio
         return x, y
 
     # ---------- Zoom ----------
@@ -437,6 +482,7 @@ class ITPTGUI:
         self.pan_x += cursor_x - screen_x_after
         self.pan_y += cursor_y - screen_y_after
 
+        self.zoom_updated = True
         self.redraw_preview()
 
     # ---------- Interaction ----------
@@ -464,6 +510,11 @@ class ITPTGUI:
         # Check if clicking on a point or a text
         self.selected_point = self.get_hovered_point(event)
         self.selected_text_id = self.get_hovered_text_id(event)
+
+        if self.add_mode == "brush":
+            self.drag_type = "left" if event.num == 1 else "right"
+            self.do_interaction(event)
+            return
 
         if event.num == 3:
             self.drag_start = (event.x, event.y)
@@ -493,7 +544,14 @@ class ITPTGUI:
             self.redraw_preview()
 
     def do_interaction(self, event):
-        if self.drag_type == "right" or (self.drag_type == "left" and self.selected_point is None and self.selected_text_id is None):
+        if self.add_mode == "brush":
+            ix, iy = self.screen_to_image((event.x, event.y))
+            draw = ImageDraw.Draw(self.brush_mask)
+            r = self.brush_size / 2
+            color = 255 if self.drag_type == "left" else 0
+            draw.ellipse([ix-r, iy-r, ix+r, iy+r], fill=color)
+            self.mask_updated = True
+        elif self.drag_type == "right" or (self.drag_type == "left" and self.selected_point is None and self.selected_text_id is None):
             self.selected_point = None
             self.selected_text_id = None
 
@@ -556,7 +614,7 @@ class ITPTGUI:
         hovered_point = self.get_hovered_point(event)
         hovered_text = self.get_hovered_text_id(event)
 
-        if hovered_point is not None or hovered_text is not None:
+        if hovered_point is not None or hovered_text is not None and self.add_mode != "brush":
             self.preview_canvas.config(cursor="hand2")
         else:
             self.preview_canvas.config(cursor="")
@@ -639,8 +697,11 @@ class ITPTGUI:
                 nodesdetection_model_weights_path_or_url=self.weights_overrides.get("Nodes Detection")
             )
 
+            input_img = self.preview_image.copy()
+            input_img = self.apply_mask(input_img, self.brush_mask)
+
             if self.current_model_module is None:
-                newick = model.convert(np.array(self.preview_image))
+                newick = model.convert(np.array(input_img))
                 newick_str = newick.to_string()
             else:
                 for step in self.current_model_steps:
@@ -651,7 +712,7 @@ class ITPTGUI:
                     newick = model.build_newick(points_norm, texts=self.texts)
                     newick_str = newick.to_string()
                 else:
-                    newick, points, texts = self.current_model_module.run_steps(model, np.array(self.preview_image), steps=self.current_model_steps)
+                    newick, points, texts = self.current_model_module.run_steps(model, np.array(input_img), steps=self.current_model_steps)
 
                     self.points = scale_points(points, scale_width=img_w, scale_height=img_h)
                     self.texts = scale_texts(texts, scale_width=img_w, scale_height=img_h)

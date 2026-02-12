@@ -85,10 +85,8 @@ def get_nearest_point(x: float, y: float, points: List[Point], direction: str, m
     min_distance = float('inf')
 
     for p in points:
-        print(p.to_string())
         if direction == "up" and p.y > y and abs(p.x - x) <= margin:
             distance = p.y - y
-            print(distance)
             if distance < min_distance:
                 min_distance = distance
                 nearest_point = p
