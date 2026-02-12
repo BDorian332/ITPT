@@ -44,7 +44,7 @@ def build_gui(version, debug):
         "--noconfirm",
     ]
 
-    if system == "Darwin":
+    if platform.system() == "Darwin":
         cmd += ["--onedir"]
     else:
         cmd += ["--onefile"]
