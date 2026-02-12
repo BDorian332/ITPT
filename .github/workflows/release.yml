@@ -57,16 +57,20 @@ jobs:
             if [[ "${RUNNER_OS}" == "Linux" ]]; then
               cp dist/gui-${gui_ver} artifacts/gui-${gui_ver}-Linux
             elif [[ "${RUNNER_OS}" == "macOS" ]]; then
-              if [[ -d dist/gui-${gui_ver}.app ]]; then
-                zip -r artifacts/gui-${gui_ver}-macOS.zip dist/gui-${gui_ver}.app
+              cd dist
+              if [[ -d gui-${gui_ver}.app ]]; then
+                zip -r ../artifacts/gui-${gui_ver}-macOS.app.zip gui-${gui_ver}.app
               fi
-              if [[ -f dist/gui-${gui_ver} ]]; then
-                cp dist/gui-${gui_ver} artifacts/gui-${gui_ver}-macOS
+              if [[ -d gui-${gui_ver} ]]; then
+                zip -r ../artifacts/gui-${gui_ver}-macOS.zip gui-${gui_ver}
               fi
+              cd ..
             elif [[ "${RUNNER_OS}" == "Windows" ]]; then
               cp dist/gui-${gui_ver}.exe artifacts/gui-${gui_ver}-Windows.exe
             fi
           done
+
+          ls -l artifacts
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
@@ -87,6 +91,7 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           path: collected
+          merge-multiple: true
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
