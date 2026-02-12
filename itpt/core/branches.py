@@ -1,7 +1,7 @@
 import numpy as np
 from typing import List, Optional, Tuple
 from numpy.typing import NDArray
-from .newick import Point, get_nearest_point, reset_points
+from .newick import Point, get_nearest_point, reset_points, scale_points
 
 Segment = Tuple[Tuple[float, float], Tuple[float, float]]
 
@@ -43,15 +43,10 @@ def process_no_root_node(
     right_pt = get_nearest_point(node.x, node.y, points, "right", margin)
 
     if right_pt:
-        next_len = abs(right_pt.x - node.x)
-
         if verbose:
-            print("    " * (depth + 1) + f"Propagating right to {right_pt.to_string()} with length {next_len}")
+            print("    " * (depth + 1) + f"Propagating right to {right_pt.to_string()}")
 
-        root_sub = process_root_node(
-            right_pt, points, x_leave, margin,
-            next_len, depth=depth + 1, verbose=verbose
-        )
+        root_sub = process_root_node(right_pt, points, x_leave, margin, depth=depth + 1, verbose=verbose)
 
         if len(root_sub) == 1:
             results.append(((node.x, node.y), (x_leave, node.y)))
@@ -61,7 +56,7 @@ def process_no_root_node(
 
     else:
         if verbose:
-            print("    " * (depth + 1) + f"No point to the right, creating leaf at x={x_leave}")
+            print("    " * (depth + 1) + f"No point to the right, creating leaf at x={x_leave}, y={node.y}")
 
         results.append(((node.x, node.y), (x_leave, node.y)))
 
@@ -72,7 +67,6 @@ def process_root_node(
     points: List[Point],
     x_leave: float,
     margin: float,
-    incoming_length: float = 0.0,
     depth: int = 0,
     verbose: bool = False
 ) -> List[Segment]:
@@ -85,7 +79,7 @@ def process_root_node(
     node.processed = True
 
     if verbose:
-        print("    " * depth + f"Processing root node: {node.to_string()} with incoming length {incoming_length}")
+        print("    " * depth + f"Processing root node: {node.to_string()}")
 
     if abs(node.x - x_leave) <= margin:
         if verbose:
@@ -124,7 +118,7 @@ def process_root_node(
         sym_y = node.y - dy
 
         if verbose:
-            print("    " * (depth + 1) + f"Missing branch, symmetric corner at y={sym_y}")
+            print("    " * (depth + 1) + f"Missing one corner, creating symmetric corner at y={sym_y}")
 
         sym_tree = process_no_root_node(
             Point(kept_pt.x, sym_y, "corner"),
@@ -148,12 +142,10 @@ def process_root_node(
 
     right_pt = get_nearest_point(node.x, node.y, points, "right", margin)
     if right_pt:
-        next_len = abs(right_pt.x - node.x)
-
         if verbose:
-            print("    " * (depth + 1) + f"Propagating right to {right_pt.to_string()} with length {next_len}")
+            print("    " * (depth + 1) + f"Propagating right to {right_pt.to_string()}")
 
-        root_sub = process_root_node(right_pt, points, x_leave, margin, next_len, depth=depth + 1)
+        root_sub = process_root_node(right_pt, points, x_leave, margin, depth=depth + 1, verbose=verbose)
         if len(root_sub) == 0:
             pass
         elif len(root_sub) == 1:
@@ -164,95 +156,63 @@ def process_root_node(
 
     return results
 
-def build_segments_from_points(
+def build_segments(
     points: List[Point],
-    margin: float = 0.5,
+    margin: float = 5,
+    scale_width: float = 1500,
+    scale_height: float = 1500,
     verbose: bool = False
 ) -> Optional[List[Segment]]:
-
-    if verbose:
-        print("Resetting points...")
-
-    reset_points(points)
+    scaled_points = scale_points(points, scale_width, scale_height)
 
     if not points:
         if verbose:
             print("No points provided.")
         return None
 
-    min_x = min(p.x for p in points)
+    if verbose:
+        print("Resetting points...")
+    reset_points(scaled_points)
+
+    min_x = min(p.x for p in scaled_points)
+    start_candidates = [p for p in scaled_points if abs(p.x - min_x) <= margin]
 
     if verbose:
         print(f"Minimal x found: {min_x}")
-
-    start_candidates = [p for p in points if abs(p.x - min_x) <= margin]
-
-    if verbose:
         print(f"Found {len(start_candidates)} start candidates within margin {margin}")
 
     start_point = min(start_candidates, key=lambda p: p.y)
     start_point.type = "node"
 
     if verbose:
-        print(f"Start point chosen (lowest y among min_x): {start_point.to_string()}")
+        print(f"Start point chosen: {start_point.to_string()}")
 
-    x_leave = max(p.x for p in points)
-
+    x_leave = max(p.x for p in scaled_points)
     if verbose:
         print(f"x_leave set to: {x_leave}")
 
     segments = process_no_root_node(
         start_point,
-        points,
+        scaled_points,
         "up",
         x_leave,
         margin,
         verbose=verbose
     )
 
+    segments = scale_segments(segments, scale_width=1.0/scale_width, scale_height=1.0/scale_height)
+
     if verbose:
         print("Segments built.")
 
     return segments
 
-def build_segments(
-    nodes: List[Tuple],
-    corners: List[Tuple] = [],
-    scale: float = 1500.0,
-    margin: float = 0.5,
-) -> Optional[List[Segment]]:
-    points: List[Point] = []
+def scale_segment(segment: Segment, scale_width: float = 1.0, scale_height: float = 1.0) -> Segment:
+    (x1, y1), (x2, y2) = segment
+    return (x1 * scale_width, y1 * scale_height), (x2 * scale_width, y2 * scale_height)
 
-    for t in nodes:
-        if len(t) < 2:
-            continue
-        x, y = float(t[0]) * scale, float(t[1]) * scale
-        points.append(Point(x, y))
-
-    for t in corners:
-        if len(t) < 2:
-            continue
-        x, y = float(t[0]) * scale, float(t[1]) * scale
-        points.append(Point(x, y, "corner"))
-
-    return build_segments_from_points(points, margin=margin)
-
-def normalize_point(p: Point, width: float, height: float) -> Point:
-    return Point(p.x / width, p.y / height, p.type)
-
-def normalize_segments(
-    segments: List[Segment],
-    width: float,
-    height: float
-) -> List[Segment]:
-    normalized: List[Segment] = []
-
-    for (x1, y1), (x2, y2) in segments:
-        p1 = normalize_point(Point(x1, y1), width, height)
-        p2 = normalize_point(Point(x2, y2), width, height)
-        normalized.append(((p1.x, p1.y), (p2.x, p2.y)))
-
-    return normalized
+def scale_segments(segments: List[Segment], scale_width: float = 1.0, scale_height: float = 1.0) -> List[Segment]:
+    return [scale_segment(s, scale_width, scale_height) for s in segments]
 
 def draw_segment(
     heatmap: NDArray[np.floating],

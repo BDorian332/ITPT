@@ -2,11 +2,13 @@ import os
 import tkinter as tk
 import threading
 import importlib
+import numpy as np
 from tkinter import ttk, filedialog, messagebox
 from pathlib import Path
 from PIL import Image, ImageTk
 from itpt.models import get_list, get_model
-from itpt.core.newick import Point
+from itpt.core.newick import Point, scale_points
+from itpt.core.branches import build_segments, scale_segments
 
 class Step:
     def __init__(self, name, default_enabled=True):
@@ -35,7 +37,7 @@ class ITPTGUI:
         self.drag_start = None
         self.drag_type = None # "left" or "right"
 
-        # ---- Points and Texts ----
+        # ---- Points, Texts and Segments ----
 
         self.points = []  # list of Point objects
         self.selected_point = None  # for drag
@@ -44,6 +46,8 @@ class ITPTGUI:
         self.selected_text_id = None
 
         self.add_mode = None  # "node", "corner", "text" ou None
+
+        self.segments = []
 
         # ---- UI ----
 
@@ -82,6 +86,7 @@ class ITPTGUI:
         ttk.Label(root, text="Image preview:").grid(row=3, column=0, columnspan=3, sticky="w", padx=5, pady=5)
         self.preview_canvas = tk.Canvas(root, bg="white")
         self.preview_canvas.grid(row=4, column=0, columnspan=3, sticky="nsew", padx=5, pady=5)
+        self.preview_canvas.bind("<Configure>", lambda e: self.redraw_preview(force=True))
 
         # Point buttons (toggle exclusive)
         edit_buttons_frame = ttk.Frame(root)
@@ -98,7 +103,7 @@ class ITPTGUI:
         self.clear_texts_btn.grid(row=0, column=4, padx=5, pady=5, sticky="w")
 
         # Output text
-        ttk.Label(root, text="Output:").grid(row=6, column=0, columnspan=3, sticky="w", padx=5, pady=5)
+        ttk.Label(root, text="Generated Newick:").grid(row=6, column=0, columnspan=3, sticky="w", padx=5, pady=5)
         output_frame = ttk.Frame(root)
         output_frame.grid(row=7, column=0, columnspan=3, sticky="nsew", padx=5, pady=5)
         self.output_text = tk.Text(output_frame, height=5, wrap="word")
@@ -124,6 +129,10 @@ class ITPTGUI:
         root.grid_rowconfigure(4, weight=1)
 
     def update_steps_ui(self):
+
+        def display_no_steps():
+            ttk.Label(self.steps_frame, text="No optionnal steps available for the current model").grid(row=0, column=0, padx=5, pady=5)
+
         for widget in self.steps_frame.winfo_children():
             widget.destroy()
 
@@ -135,18 +144,24 @@ class ITPTGUI:
         try:
             model_module = importlib.import_module(f"gui_v1.models.{model_name}")
         except ModuleNotFoundError:
+            display_no_steps()
             self.current_model_module = None
+            self.current_model_steps = []
             return
 
+        steps = getattr(model_module, "STEPS", [])
         self.step_vars.clear()
-        for i, step in enumerate(getattr(model_module, "STEPS")):
-            var = tk.BooleanVar(value=step.default_enabled)
-            self.step_vars[step.name] = var
-            cb = ttk.Checkbutton(self.steps_frame, text=step.name, variable=var)
-            cb.grid(row=0, column=i, sticky="w", padx=5, pady=5)
+        if steps:
+            for i, step in enumerate(steps):
+                var = tk.BooleanVar(value=step.default_enabled)
+                self.step_vars[step.name] = var
+                cb = ttk.Checkbutton(self.steps_frame, text=step.name, variable=var)
+                cb.grid(row=0, column=i, sticky="w", padx=5, pady=5)
+        else:
+            display_no_steps()
 
         self.current_model_module = model_module
-        self.current_model_steps = getattr(model_module, "STEPS")
+        self.current_model_steps = steps
 
     # ---------- Events ----------
 
@@ -232,7 +247,7 @@ class ITPTGUI:
         self.points.clear()
         self.redraw_preview()
 
-    def redraw_preview(self, event=None):
+    def redraw_preview(self, event=None, force=False):
         self.preview_canvas.delete("all")
         if not self.preview_image:
             return
@@ -246,14 +261,14 @@ class ITPTGUI:
         self.base_ratio = base_ratio
 
         # Draw image
-        if self.zoomed_image is None or self.zoom != self.last_zoom:
+        if force or self.zoomed_image is None or self.zoom != self.last_zoom:
             new_w = int(self.preview_image.width * ratio)
             new_h = int(self.preview_image.height * ratio)
             self.zoomed_image = self.preview_image.resize((new_w, new_h), Image.NEAREST)
             self.last_zoom = self.zoom
             self.last_pan = None
 
-        if self.last_pan is None or self.last_pan != (self.pan_x, self.pan_y):
+        if force or self.last_pan is None or self.last_pan != (self.pan_x, self.pan_y):
             self.tk_image = ImageTk.PhotoImage(self.zoomed_image)
             self.last_pan = (self.pan_x, self.pan_y)
 
@@ -264,12 +279,29 @@ class ITPTGUI:
             anchor="center"
         )
 
-        # Draw points
-        for pt in self.points:
-            screen_x, screen_y = self.image_to_screen(pt)
-            color = "red" if pt.type == "node" else "blue"
-            r = 5
-            self.preview_canvas.create_oval(screen_x-r, screen_y-r, screen_x+r, screen_y+r, fill=color, outline="black")
+        # Draw segments
+        for seg in self.segments:
+            (x1, y1), (x2, y2) = seg
+            p1 = Point(x1, y1)
+            p2 = Point(x2, y2)
+
+            def shorten(p_start, p_end, offset=5):
+                dx = p_end.x - p_start.x
+                dy = p_end.y - p_start.y
+                length = (dx**2 + dy**2)**0.5
+                if length == 0:
+                    return None
+                factor = offset / length
+                new_start = Point(p_start.x + dx*factor, p_start.y + dy*factor)
+                new_end = Point(p_end.x - dx*factor, p_end.y - dy*factor)
+                return new_start, new_end
+
+            result = shorten(p1, p2, offset=0)
+            if result is not None:
+                s1, s2 = result
+                sx1, sy1 = self.image_to_screen(s1)
+                sx2, sy2 = self.image_to_screen(s2)
+                self.preview_canvas.create_line(sx1, sy1, sx2, sy2, fill="green", width=7)
 
         # Draw texts
         for i, txt in enumerate(self.texts):
@@ -279,6 +311,13 @@ class ITPTGUI:
             cx, cy = self.image_to_screen(Point(cx_img, cy_img))
 
             self.preview_canvas.create_text(cx, cy, text=txt["text"], tags=("text", f"text_{i}"), fill="red", font=("Arial", 12), anchor="w")
+
+        # Draw points
+        for pt in self.points:
+            screen_x, screen_y = self.image_to_screen(pt)
+            color = "red" if pt.type == "node" else "blue"
+            r = 5
+            self.preview_canvas.create_oval(screen_x-r, screen_y-r, screen_x+r, screen_y+r, fill=color, outline="black")
 
     # ---------- Coordinate transforms ----------
 
@@ -305,10 +344,23 @@ class ITPTGUI:
     def on_zoom(self, event):
         if not self.preview_image:
             return
-        if event.delta > 0 or getattr(event, "num") == 4:
-            self.zoom *= 1.1
-        else:
-            self.zoom *= 0.9
+
+        cursor_x = event.x
+        cursor_y = event.y
+
+        img_x_before, img_y_before = self.screen_to_image((cursor_x, cursor_y))
+
+        zoom_factor = 1.1 if (getattr(event, "delta", 0) > 0 or getattr(event, "num", None) == 4) else 0.9
+        self.zoom *= zoom_factor
+
+        min_zoom = 0.1
+        max_zoom = 7.0
+        self.zoom = max(min(self.zoom, max_zoom), min_zoom)
+
+        screen_x_after, screen_y_after = self.image_to_screen(Point(img_x_before, img_y_before))
+        self.pan_x += cursor_x - screen_x_after
+        self.pan_y += cursor_y - screen_y_after
+
         self.redraw_preview()
 
     # ---------- Interaction ----------
@@ -354,6 +406,7 @@ class ITPTGUI:
             # Add point
             x, y = self.screen_to_image((event.x, event.y))
             self.points.append(Point(x, y, self.add_mode))
+            self.update_segments()
             self.redraw_preview()
         elif self.add_mode == "text":
             x, y = self.screen_to_image((event.x, event.y))
@@ -379,6 +432,7 @@ class ITPTGUI:
             x, y = self.screen_to_image((event.x, event.y))
             self.selected_point.x = x
             self.selected_point.y = y
+            self.update_segments()
         elif self.selected_text_id is not None:
             txt = self.texts[self.selected_text_id]
             px, py = self.screen_to_image(self.drag_start)
@@ -403,6 +457,7 @@ class ITPTGUI:
         if event.num == 3:
             if self.selected_point is not None:
                 self.points.remove(self.selected_point)
+                self.update_segments()
             elif self.selected_text_id is not None:
                 self.texts.pop(self.selected_text_id)
             self.redraw_preview()
@@ -414,6 +469,7 @@ class ITPTGUI:
 
     def clear_points(self):
         self.points.clear()
+        self.update_segments()
         self.redraw_preview()
 
     def clear_texts(self):
@@ -444,7 +500,7 @@ class ITPTGUI:
 
         entry_width = 110
         entry_height = 30
-        entry.place(x=cx - entry_width/2, y=cy - entry_height/2, width=entry_width, height=entry_height)
+        entry.place(x=cx - entry_width/2 - entry_width, y=cy - entry_height/2, width=entry_width, height=entry_height)
         entry.focus_set()
 
         def save_text(event):
@@ -459,6 +515,19 @@ class ITPTGUI:
         entry.bind("<Return>", save_text)
         entry.bind("<FocusOut>", save_text)
         entry.bind("<Escape>", cancel_edit)
+
+    def update_segments(self):
+        if not self.preview_image or not self.points:
+            self.segments = []
+            return
+
+        img_w = self.preview_image.width
+        img_h = self.preview_image.height
+
+        points_norm = scale_points(self.points, scale_width=1.0/img_w, scale_height=1.0/img_h)
+        segments = build_segments(points_norm)
+        self.segments = segments if segments else []
+        self.segments = scale_segments(self.segments, scale_width=img_w, scale_height=img_h)
 
     # ---------- Output ----------
 
@@ -506,6 +575,7 @@ class ITPTGUI:
 
                     self.points = scale_points(points, scale_width=img_w, scale_height=img_h)
                     self.texts = scale_texts(texts, scale_width=img_w, scale_height=img_h)
+                    self.update_segments()
 
                     newick_str = newick.to_string()
 

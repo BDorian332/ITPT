@@ -1,4 +1,5 @@
 from itpt.core import Model
+from itpt.core.newick import Newick, NewickInternal
 
 class ExampleModel(Model):
     def __init__(self):
@@ -11,7 +12,9 @@ class ExampleModel(Model):
         print("load called")
         self._loaded = True
 
-    def convert(self, image_path):
+    def convert(self, path_or_array):
         self.ensure_loaded()
-        print(f"convert called on image_path={image_path}")
-        return "newick"
+        print(f"convert called on path_or_array={path_or_array}")
+        leaf1 = NewickInternal(name="A", length=1.0)
+        leaf2 = NewickInternal(name="B", length=1.0)
+        return Newick(internals=[leaf1, leaf2])

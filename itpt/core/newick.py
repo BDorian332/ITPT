@@ -85,8 +85,10 @@ def get_nearest_point(x: float, y: float, points: List[Point], direction: str, m
     min_distance = float('inf')
 
     for p in points:
+        print(p.to_string())
         if direction == "up" and p.y > y and abs(p.x - x) <= margin:
             distance = p.y - y
+            print(distance)
             if distance < min_distance:
                 min_distance = distance
                 nearest_point = p
@@ -299,11 +301,11 @@ def reset_points(points: List[Point]) -> None:
 
 def build_newick(
     points: List[Point],
-    margin: float = 0.5,
+    margin: float = 5,
     texts: List[dict] = [],
-    max_distance: float = 1,
-    scale_width: float = 1.0,
-    scale_height: float = 1.0,
+    max_distance: float = 20,
+    scale_width: float = 1500,
+    scale_height: float = 1500,
     verbose: bool = False
 ) -> Optional[Newick]:
     """
@@ -321,14 +323,14 @@ def build_newick(
     scaled_points = scale_points(points, scale_width, scale_height)
     scaled_texts = scale_texts(texts, scale_width, scale_height)
 
-    if verbose:
-        print("Resetting points...")
-    reset_points(scaled_points)
-
     if not scaled_points:
         if verbose:
             print("No points provided.")
         return None
+
+    if verbose:
+        print("Resetting points...")
+    reset_points(scaled_points)
 
     min_x = min(p.x for p in scaled_points)
     start_candidates = [p for p in scaled_points if abs(p.x - min_x) <= margin]
@@ -358,10 +360,16 @@ def build_newick(
         verbose=verbose
     )
 
+    newick = Newick(newick_internals)
+    newick.normalize()
+
     if verbose:
         print("Newick built.")
 
-    return Newick(newick_internals)
+    return newick
+
+def scale_point(point: Point, scale_width: float = 1.0, scale_height: float = 1.0) -> Point:
+    return Point(point.x * scale_width, point.y * scale_height, point.type)
 
 def scale_points(points: List[Point], scale_width: float = 1.0, scale_height: float = 1.0) -> List[Point]:
     """
@@ -372,7 +380,17 @@ def scale_points(points: List[Point], scale_width: float = 1.0, scale_height: fl
     scale_height : scale factor for y coordinate
     return : new list of scaled Point objects
     """
-    return [Point(p.x * scale_width, p.y * scale_height, p.type) for p in points]
+    return [scale_point(p, scale_width, scale_height) for p in points]
+
+def scale_text(text: List[dict], scale_width: float = 1.0, scale_height: float = 1.0) -> dict:
+    x1, y1, x2, y2 = text["bbox"]
+    scaled_bbox = [
+        x1 * scale_width,
+        y1 * scale_height,
+        x2 * scale_width,
+        y2 * scale_height
+    ]
+    return {**text, "bbox": scaled_bbox}
 
 def scale_texts(texts: List[dict], scale_width: float = 1.0, scale_height: float = 1.0) -> List[dict]:
     """
@@ -385,14 +403,7 @@ def scale_texts(texts: List[dict], scale_width: float = 1.0, scale_height: float
     """
     scaled_texts = []
     for entry in texts:
-        x1, y1, x2, y2 = entry["bbox"]
-        scaled_bbox = [
-            x1 * scale_width,
-            y1 * scale_height,
-            x2 * scale_width,
-            y2 * scale_height
-        ]
-        scaled_texts.append({**entry, "bbox": scaled_bbox})
+        scaled_texts.append(scale_text(entry, scale_width, scale_height))
     return scaled_texts
 
 def points_to_tuples(points: List[Point], scale_width: float = 1.0, scale_height: float = 1.0):
