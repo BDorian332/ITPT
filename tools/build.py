@@ -17,7 +17,7 @@ def build_lib():
         print(f"Failed to build library: {e}")
         sys.exit(1)
 
-def build_gui(version="v1", debug=False):
+def build_gui(version, debug):
     gui_dir = PROJECT_ROOT / f"gui_{version}"
     gui_main = gui_dir / "main.py"
 
@@ -73,16 +73,17 @@ def main():
     parser = argparse.ArgumentParser(description="ITPT Build Tool")
     parser.add_argument("--lib", action="store_true", help="Build Python library only")
     parser.add_argument("--gui", nargs="?", const="v1", choices=["v1", "v2"], help="Build standalone GUI (v1 or v2). Defaults to v1.")
+    parser.add_argument("--debug", action="store_true", help="Run bundled application in console/debug mode (do not hide terminal)")
     args = parser.parse_args()
 
     if args.lib:
         build_lib()
 
     if args.gui:
-        build_gui(args.gui)
+        build_gui(args.gui, args.debug)
 
     if not (args.lib or args.gui):
-        print("Nothing to do. Use --lib, or --gui [v1|v2].")
+        print("Nothing to do. Use --lib, or --gui [v1|v2]. You can also use --debug.")
 
 if __name__ == "__main__":
     main()

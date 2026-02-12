@@ -6,7 +6,7 @@ from pathlib import Path
 PROJECT_ROOT = Path(__file__).parents[1]
 SANDBOX_MAIN = PROJECT_ROOT / "sandbox" / "main.py"
 
-def run_gui(version="v1"):
+def run_gui(version):
     gui_module = f"gui_{version}.main"
     print(f"=== Running GUI {version} ===")
     try:
