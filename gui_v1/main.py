@@ -91,7 +91,7 @@ class ITPTGUI:
         self.preview_canvas.grid(row=4, column=0, columnspan=3, sticky="nsew", padx=5, pady=5)
         self.preview_canvas.bind("<Configure>", lambda e: self.redraw_preview(force=True))
 
-        # Point buttons (toggle exclusive)
+        # Edit buttons (toggle exclusive)
         edit_buttons_frame = ttk.Frame(root)
         edit_buttons_frame.grid(row=5, column=0, columnspan=3, sticky="w")
         self.add_node_btn = ttk.Button(edit_buttons_frame, text="Add Node", command=lambda: self.toggle_mode("node"), state="disabled")
