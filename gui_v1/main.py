@@ -28,9 +28,9 @@ class ITPTGUI:
 
         self.preview_image = None
         self.zoomed_image = None
-        self.zoomed_image_masked = None
-        self.zoom_updated = False
-        self.mask_updated = False
+        self.brush_mask = None
+        self.image_updated = False
+        self.last_screen_pos = None
         self.pan_x = 0
         self.pan_y = 0
         self.tk_image = None
@@ -48,7 +48,6 @@ class ITPTGUI:
         self.texts = []
         self.selected_text_id = None
 
-        self.brush_mask = None
         self.brush_size = 20
 
         self.add_mode = None # "node", "corner", "text", "brush" or None
@@ -102,9 +101,9 @@ class ITPTGUI:
         edit_buttons_frame.grid(row=5, column=0, columnspan=3, sticky="w")
         self.add_node_btn = ttk.Button(edit_buttons_frame, text="Add Node", command=lambda: self.toggle_mode("node"), state="disabled")
         self.add_corner_btn = ttk.Button(edit_buttons_frame, text="Add Corner", command=lambda: self.toggle_mode("corner"), state="disabled")
-        self.clear_points_btn = ttk.Button(edit_buttons_frame, text="Clear All Points (right click on one to delete it)", command=self.clear_points, state="disabled")
+        self.clear_points_btn = ttk.Button(edit_buttons_frame, text="Clear All Points", command=self.clear_points, state="disabled")
         self.add_text_btn = ttk.Button(edit_buttons_frame, text="Add Text", command=lambda: self.toggle_mode("text"), state="disabled")
-        self.clear_texts_btn = ttk.Button(edit_buttons_frame, text="Clear All Texts (right click on one to delete it)", command=self.clear_texts, state="disabled")
+        self.clear_texts_btn = ttk.Button(edit_buttons_frame, text="Clear All Texts", command=self.clear_texts, state="disabled")
         self.add_node_btn.grid(row=0, column=0, padx=5, pady=5, sticky="w")
         self.add_corner_btn.grid(row=0, column=1, padx=5, pady=5, sticky="w")
         self.clear_points_btn.grid(row=0, column=2, padx=5, pady=5, sticky="w")
@@ -112,6 +111,8 @@ class ITPTGUI:
         self.clear_texts_btn.grid(row=0, column=4, padx=5, pady=5, sticky="w")
         self.brush_btn = ttk.Button(edit_buttons_frame, text="Brush", command=lambda: self.toggle_mode("brush"), state="disabled")
         self.brush_btn.grid(row=0, column=5, padx=5, pady=5, sticky="w")
+        self.reset_view_btn = ttk.Button(edit_buttons_frame, text="Reset View", command=self.reset_view)
+        self.reset_view_btn.grid(row=0, column=6, padx=5, pady=5, sticky="w")
 
         # Output text
         ttk.Label(root, text="Generated Newick:").grid(row=6, column=0, columnspan=3, sticky="w", padx=5, pady=5)
@@ -211,7 +212,7 @@ class ITPTGUI:
             url_ent = ttk.Entry(frame)
             url_ent.insert(0, saved_url)
             url_ent.grid(row=0, column=1, sticky="ew", padx=5)
-            ttk.Button(frame, text="Default", width=7, command=lambda ent=url_ent, d=default_url: reset_ent(ent, d)).grid(row=0, column=2, sticky="w", padx=5)
+            ttk.Button(frame, text="Default", command=lambda ent=url_ent, d=default_url: reset_ent(ent, d)).grid(row=0, column=2, sticky="w", padx=5)
 
             saved_path = self.weights_overrides.get(f"{key}_path", "")
             ttk.Label(frame, text="Local Path:").grid(row=1, column=0, sticky="w")
@@ -228,8 +229,8 @@ class ITPTGUI:
             path_btns_frame = ttk.Frame(frame)
             path_btns_frame.grid(row=1, column=2, sticky="w")
 
-            ttk.Button(path_btns_frame, text="Default", width=7, command=lambda ent=path_ent: reset_ent(ent, "")).pack(side="left", padx=5)
-            ttk.Button(path_btns_frame, text="...", width=3, command=browse_weights).pack(side="left", padx=5)
+            ttk.Button(path_btns_frame, text="Default", command=lambda ent=path_ent: reset_ent(ent, "")).pack(side="left", padx=5)
+            ttk.Button(path_btns_frame, text="...", command=browse_weights).pack(side="left", padx=5)
 
             frame.columnconfigure(1, weight=1)
             entries[key] = {"url_widget": url_ent, "path_widget": path_ent}
@@ -283,11 +284,14 @@ class ITPTGUI:
     def on_mouse_move(self, event):
         self.update_cursor(event)
 
-        self.mouse_x = event.x
-        self.mouse_y = event.y
+        dx = abs(event.x - self.mouse_x)
+        dy = abs(event.y - self.mouse_y)
 
         if self.add_mode == "brush":
-            self.redraw_preview()
+            if dx > 2 or dy > 2:
+                self.mouse_x = event.x
+                self.mouse_y = event.y
+                self.redraw_preview()
 
     def on_mouse_wheel(self, event):
         if self.add_mode == "brush":
@@ -349,10 +353,10 @@ class ITPTGUI:
         try:
             self.preview_image = Image.open(path).convert("RGB")
             self.zoomed_image = self.preview_image
-            self.zoomed_image_masked = None
+            self.brush_mask = Image.new("1", self.preview_image.size, 0)
+            self.image_updated = False
             self.zoom = 1.0
-            self.zoom_updated = False
-            self.mask_updated = False
+            self.last_screen_pos = None
             self.pan_x = 0
             self.pan_y = 0
             self.add_node_btn.config(state="normal")
@@ -360,7 +364,6 @@ class ITPTGUI:
             self.clear_points_btn.config(state="normal")
             self.add_text_btn.config(state="normal")
             self.clear_texts_btn.config(state="normal")
-            self.brush_mask = Image.new("1", self.preview_image.size, 0)
             self.brush_size = 200
             self.brush_btn.config(state="normal")
         except Exception:
@@ -385,91 +388,89 @@ class ITPTGUI:
         if not self.preview_image:
             return
 
-        canvas_w = self.preview_canvas.winfo_width()
-        canvas_h = self.preview_canvas.winfo_height()
-        img_w = self.preview_image.width
-        img_h = self.preview_image.height
-        base_ratio = min(canvas_w / img_w, canvas_h / img_h)
-        ratio = base_ratio * self.zoom
-        self.base_ratio = base_ratio
+        # Canvas and base scaling logic
+        cw = self.preview_canvas.winfo_width()
+        ch = self.preview_canvas.winfo_height()
+        iw, ih = self.preview_image.size
 
-        # Draw image
-        display_img = self.preview_image.copy()
-        if force or self.mask_updated:
-            display_img = self.apply_mask(display_img, self.brush_mask)
+        self.base_ratio = min(cw / iw, ch / ih)
+        ratio = self.base_ratio * self.zoom
 
-        if force or self.zoomed_image is None or self.zoom_updated:
-            new_w, new_h = int(img_w * ratio), int(img_h * ratio)
-            self.zoomed_image = self.preview_image.resize((new_w, new_h), Image.NEAREST)
-            self.zoom_updated = False
-            self.mask_updated = True
+        if force or self.image_updated or self.tk_image is None:
+            # Viewport calculation
+            x0 = (0 - cw // 2 - self.pan_x) / ratio + iw / 2
+            y0 = (0 - ch // 2 - self.pan_y) / ratio + ih / 2
+            x1 = (cw - cw // 2 - self.pan_x) / ratio + iw / 2
+            y1 = (ch - ch // 2 - self.pan_y) / ratio + ih / 2
 
-        if self.zoomed_image_masked is None or self.mask_updated:
-            z_w, z_h = self.zoomed_image.size
-            resized_mask = self.brush_mask.resize((z_w, z_h), Image.NEAREST)
-            self.zoomed_image_masked = self.apply_mask(self.zoomed_image, resized_mask)
+            # Clamp to image boundaries
+            crop_x0 = max(0, int(x0) - 5)
+            crop_y0 = max(0, int(y0) - 5)
+            crop_x1 = min(iw, int(x1) + 5)
+            crop_y1 = min(ih, int(y1) + 5)
+
+            # If image outside viewport
+            if crop_x1 <= crop_x0 or crop_y1 <= crop_y0:
+                return
+
+            # Render visivlz slice
+            visible_base = self.preview_image.crop((crop_x0, crop_y0, crop_x1, crop_y1))
+            visible_mask = self.brush_mask.crop((crop_x0, crop_y0, crop_x1, crop_y1))
+
+            # Target size for the visible slice on screen
+            slice_w = int((crop_x1 - crop_x0) * ratio)
+            slice_h = int((crop_y1 - crop_y0) * ratio)
+
+            # If image too small
+            if slice_w == 0 or slice_h == 0:
+                return
+
+            # Resize only the visible slice
+            resized_slice = visible_base.resize((slice_w, slice_h), Image.NEAREST)
+            resized_mask = visible_mask.resize((slice_w, slice_h), Image.NEAREST)
+
+            # Apply mask to the slice
+            self.zoomed_image_masked = self.apply_mask(resized_slice, resized_mask)
             self.tk_image = ImageTk.PhotoImage(self.zoomed_image_masked)
-            self.mask_updated = False
+
+            # Find screen position of the top-left corner of the crop
+            self.last_screen_pos = self.image_to_screen(Point(crop_x0, crop_y0))
+
+            self.image_updated = False
 
         self.preview_canvas.create_image(
-            canvas_w//2 + self.pan_x,
-            canvas_h//2 + self.pan_y,
+            self.last_screen_pos[0], self.last_screen_pos[1],
             image=self.tk_image,
-            anchor="center"
+            anchor="nw",
+            tags="background_image"
         )
 
         # Draw segments
         for seg in self.segments:
             (x1, y1), (x2, y2) = seg
-            p1 = Point(x1, y1)
-            p2 = Point(x2, y2)
-
-            def shorten(p_start, p_end, offset=5):
-                dx = p_end.x - p_start.x
-                dy = p_end.y - p_start.y
-                length = (dx**2 + dy**2)**0.5
-                if length == 0:
-                    return None
-                factor = offset / length
-                new_start = Point(p_start.x + dx*factor, p_start.y + dy*factor)
-                new_end = Point(p_end.x - dx*factor, p_end.y - dy*factor)
-                return new_start, new_end
-
-            result = shorten(p1, p2, offset=0)
-            if result is not None:
-                s1, s2 = result
-                sx1, sy1 = self.image_to_screen(s1)
-                sx2, sy2 = self.image_to_screen(s2)
-                self.preview_canvas.create_line(sx1, sy1, sx2, sy2, fill="green", width=7)
+            sx1, sy1 = self.image_to_screen(Point(x1, y1))
+            sx2, sy2 = self.image_to_screen(Point(x2, y2))
+            self.preview_canvas.create_line(sx1, sy1, sx2, sy2, fill="green", width=7)
 
         # Draw texts
         for i, txt in enumerate(self.texts):
             x1, y1, x2, y2 = txt["bbox"]
-            cx_img = x1
-            cy_img = y1 + (y2 - y1) / 2
-            cx, cy = self.image_to_screen(Point(cx_img, cy_img))
-
+            cx, cy = self.image_to_screen(Point(x1, y1 + (y2 - y1) / 2))
             self.preview_canvas.create_text(cx, cy, text=txt["text"], tags=("text", f"text_{i}"), fill="red", font=("Arial", 12), anchor="w")
 
         # Draw points
         for pt in self.points:
             screen_x, screen_y = self.image_to_screen(pt)
             color = "red" if pt.type == "node" else "blue"
-            r = 5
-            self.preview_canvas.create_oval(screen_x-r, screen_y-r, screen_x+r, screen_y+r, fill=color, outline="black")
+            self.preview_canvas.create_oval(screen_x-5, screen_y-5, screen_x+5, screen_y+5, fill=color, outline="black")
 
-        # Draw brush circle
-        if self.add_mode == "brush" and self.mouse_inside_canvas:
-            visual_radius = (self.brush_size / 2) * (self.base_ratio * self.zoom)
-
+        # Draw brush
+        if self.add_mode == "brush" and getattr(self, "mouse_inside_canvas", False):
+            visual_radius = (self.brush_size / 2) * ratio
             self.preview_canvas.create_oval(
-                self.mouse_x - visual_radius,
-                self.mouse_y - visual_radius,
-                self.mouse_x + visual_radius,
-                self.mouse_y + visual_radius,
-                outline="red",
-                width=2,
-                tags="brush_cursor"
+                self.mouse_x - visual_radius, self.mouse_y - visual_radius,
+                self.mouse_x + visual_radius, self.mouse_y + visual_radius,
+                outline="red", width=2, tags="brush_cursor"
             )
 
     # ---------- Coordinate transforms ----------
@@ -479,10 +480,9 @@ class ITPTGUI:
         Convert coordinates from Canvas (screen) space to Image space (0,0 at top-left).
         Takes into account canvas centering, panning, and zoom ratio.
         """
-        canvas_w = self.preview_canvas.winfo_width()
-        canvas_h = self.preview_canvas.winfo_height()
-        img_w = self.preview_image.width
-        img_h = self.preview_image.height
+        cw = self.preview_canvas.winfo_width()
+        ch = self.preview_canvas.winfo_height()
+        iw, ih = self.preview_image.size
 
         # Calculate current effective ratio (base fitting ratio * user zoom)
         ratio = self.base_ratio * self.zoom
@@ -490,8 +490,8 @@ class ITPTGUI:
         # 1. Subtract canvas center and pan offset
         # 2. Divide by ratio to get distance in image pixels
         # 3. Add half of image dimension to shift origin from Center to Top-Left
-        x = (pt[0] - canvas_w // 2 - self.pan_x) / ratio + img_w / 2
-        y = (pt[1] - canvas_h // 2 - self.pan_y) / ratio + img_h / 2
+        x = (pt[0] - cw // 2 - self.pan_x) / ratio + iw / 2
+        y = (pt[1] - ch // 2 - self.pan_y) / ratio + ih / 2
         return x, y
 
     def image_to_screen(self, pt):
@@ -499,17 +499,16 @@ class ITPTGUI:
         Convert coordinates from Image space (0,0 at top-left) back to Canvas (screen) space.
         Used for rendering points and segments correctly on the UI.
         """
-        canvas_w = self.preview_canvas.winfo_width()
-        canvas_h = self.preview_canvas.winfo_height()
-        img_w = self.preview_image.width
-        img_h = self.preview_image.height
+        cw = self.preview_canvas.winfo_width()
+        ch = self.preview_canvas.winfo_height()
+        iw, ih = self.preview_image.size
 
         ratio = self.base_ratio * self.zoom
 
         # 1. Shift origin from Top-Left to Center by subtracting half dimensions
         # 2. Multiply by ratio and add canvas center + pan offsets
-        x = canvas_w // 2 + self.pan_x + (pt.x - img_w / 2) * ratio
-        y = canvas_h // 2 + self.pan_y + (pt.y - img_h / 2) * ratio
+        x = cw // 2 + self.pan_x + (pt.x - iw / 2) * ratio
+        y = ch // 2 + self.pan_y + (pt.y - ih / 2) * ratio
         return x, y
 
     # ---------- Zoom ----------
@@ -527,14 +526,14 @@ class ITPTGUI:
         self.zoom *= zoom_factor
 
         min_zoom = 0.1
-        max_zoom = 7.0
+        max_zoom = 30
         self.zoom = max(min(self.zoom, max_zoom), min_zoom)
 
         screen_x_after, screen_y_after = self.image_to_screen(Point(img_x_before, img_y_before))
         self.pan_x += cursor_x - screen_x_after
         self.pan_y += cursor_y - screen_y_after
 
-        self.zoom_updated = True
+        self.image_updated = True
         self.redraw_preview()
 
     # ---------- Interaction ----------
@@ -605,7 +604,7 @@ class ITPTGUI:
             r = self.brush_size / 2
             color = 1 if self.drag_type == "left" else 0
             draw.ellipse([ix-r, iy-r, ix+r, iy+r], fill=color)
-            self.mask_updated = True
+            self.image_updated = True
         elif self.drag_type == "right" or (self.drag_type == "left" and self.selected_point is None and self.selected_text_id is None):
             self.selected_point = None
             self.selected_text_id = None
@@ -616,6 +615,7 @@ class ITPTGUI:
             self.pan_x += dx
             self.pan_y += dy
             self.drag_start = (event.x, event.y)
+            self.image_updated = True
         elif self.selected_point is not None:
             # Drag point
             x, y = self.screen_to_image((event.x, event.y))
@@ -722,6 +722,13 @@ class ITPTGUI:
         self.segments = segments if segments else []
         self.segments = scale_segments(self.segments, scale_width=img_w, scale_height=img_h)
 
+    def reset_view(self):
+        self.pan_x = 0
+        self.pan_y = 0
+        self.zoom = 1.0
+        self.image_updated = True
+        self.redraw_preview()
+
     # ---------- Output ----------
 
     def show_output(self, text):
@@ -744,11 +751,6 @@ class ITPTGUI:
             img_w = self.preview_image.width
             img_h = self.preview_image.height
 
-            self.texts = [{
-                "text": "test",
-                "bbox": (20, 20, 70, 50)
-            }]
-
             model = get_model(model_name)
             model.load(
                 cropping_model_weights_path_or_url=self.weights_overrides.get("Cropping"),
@@ -756,8 +758,7 @@ class ITPTGUI:
                 nodesdetection_model_weights_path_or_url=self.weights_overrides.get("Nodes Detection")
             )
 
-            input_img = self.preview_image.copy()
-            input_img = self.apply_mask(input_img, self.brush_mask)
+            input_img = self.apply_mask(self.preview_image, self.brush_mask)
 
             if self.current_model_module is None:
                 newick = model.convert(np.array(input_img))
