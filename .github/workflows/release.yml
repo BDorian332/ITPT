@@ -36,26 +36,34 @@ jobs:
       - name: Build app
         run: |
           poetry run itpt-build --lib
-          poetry run itpt-build --gui
+          for gui_ver in v1 v2; do
+            poetry run itpt-build --gui $gui_ver
+          done
 
       - name: Prepare artifacts
         shell: bash
         run: |
+          ls -l dist
           mkdir -p artifacts
 
           if [[ "${RUNNER_OS}" == "Linux" ]]; then
-            cp dist/gui artifacts/gui-Linux
-            cp dist/itpt-0-py3-none-any.whl artifacts/itpt-0-py3-none-any.whl
-          elif [[ "${RUNNER_OS}" == "macOS" ]]; then
-            if [[ -d dist/gui.app ]]; then
-              # If --windowed
-              zip -r artifacts/gui-macOS.zip dist/gui.app
-            else
-              cp dist/gui artifacts/gui-macOS
-            fi
-          elif [[ "${RUNNER_OS}" == "Windows" ]]; then
-            cp dist/gui.exe artifacts/gui-Windows.exe
+            cp dist/*.whl artifacts/
           fi
+
+          for gui_ver in v1 v2; do
+            if [[ "${RUNNER_OS}" == "Linux" ]]; then
+              cp dist/gui-${gui_ver} artifacts/gui-${gui_ver}-Linux
+            elif [[ "${RUNNER_OS}" == "macOS" ]]; then
+              if [[ -d dist/gui-${gui_ver}.app ]]; then
+                # If --windowed
+                zip -r artifacts/gui-${gui_ver}-macOS.zip dist/gui-${gui_ver}.app
+              else
+                cp dist/gui-${gui_ver} artifacts/gui-${gui_ver}-macOS
+              fi
+            elif [[ "${RUNNER_OS}" == "Windows" ]]; then
+              cp dist/gui-${gui_ver}.exe artifacts/gui-${gui_ver}-Windows.exe
+            fi
+          done
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
