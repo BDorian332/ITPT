@@ -28,14 +28,17 @@ class ITPTGUI:
 
         self.preview_image = None
         self.zoomed_image = None
+        self.zoomed_image_masked = None
         self.zoom_updated = False
-        self.preview_image_masked = None
         self.mask_updated = False
         self.pan_x = 0
         self.pan_y = 0
         self.tk_image = None
         self.drag_start = None
         self.drag_type = None # "left" or "right"
+        self.mouse_x = 0
+        self.mouse_y = 0
+        self.mouse_inside_canvas = False
 
         # ---- Points, Texts, Segments and Brush ----
 
@@ -248,11 +251,6 @@ class ITPTGUI:
     def bind_events(self):
         c = self.preview_canvas
 
-        # Zoom
-        c.bind("<MouseWheel>", self.on_zoom)
-        c.bind("<Button-4>", self.on_zoom)
-        c.bind("<Button-5>", self.on_zoom)
-
         # Interations
         c.bind("<ButtonPress-1>", self.start_interaction)
         c.bind("<B1-Motion>", self.do_interaction)
@@ -262,8 +260,14 @@ class ITPTGUI:
         c.bind("<B3-Motion>", self.do_interaction)
         c.bind("<ButtonRelease-3>", self.end_interaction)
 
-        # Hover cursor
-        c.bind("<Motion>", self.update_cursor)
+        # Mouse
+        c.bind("<Motion>", self.on_mouse_move)
+        c.bind("<Motion>", self.on_mouse_move, add="+")
+        c.bind("<MouseWheel>", self.on_mouse_wheel)
+        c.bind("<Button-4>", self.on_mouse_wheel)
+        c.bind("<Button-5>", self.on_mouse_wheel)
+        c.bind("<Enter>", self.on_canvas_enter)
+        c.bind("<Leave>", self.on_canvas_leave)
 
         # Model change
         self.model_combobox.bind("<<ComboboxSelected>>", self.on_model_change)
@@ -275,6 +279,39 @@ class ITPTGUI:
     def on_model_change(self, event=None):
         self.update_steps_ui()
         self.weights_overrides = {}
+
+    def on_mouse_move(self, event):
+        self.update_cursor(event)
+
+        self.mouse_x = event.x
+        self.mouse_y = event.y
+
+        if self.add_mode == "brush":
+            self.redraw_preview()
+
+    def on_mouse_wheel(self, event):
+        if self.add_mode == "brush":
+            delta = 0
+            if event.num == 4 or event.delta > 0: delta = 5
+            elif event.num == 5 or event.delta < 0: delta = -5
+
+            self.brush_size = self.brush_size + delta
+
+            min_brush_size = 2
+            max_brush_size = 400
+            self.brush_size = max(min(self.brush_size, max_brush_size), min_brush_size)
+
+            self.redraw_preview()
+        else:
+            self.on_zoom(event)
+
+    def on_canvas_enter(self, event):
+        self.mouse_inside_canvas = True
+        self.redraw_preview()
+
+    def on_canvas_leave(self, event):
+        self.mouse_inside_canvas = False
+        self.redraw_preview()
 
     # ---------- Toggle modes ----------
 
@@ -312,9 +349,9 @@ class ITPTGUI:
         try:
             self.preview_image = Image.open(path).convert("RGB")
             self.zoomed_image = self.preview_image
+            self.zoomed_image_masked = None
             self.zoom = 1.0
             self.zoom_updated = False
-            self.preview_image_masked = None
             self.mask_updated = False
             self.pan_x = 0
             self.pan_y = 0
@@ -323,7 +360,7 @@ class ITPTGUI:
             self.clear_points_btn.config(state="normal")
             self.add_text_btn.config(state="normal")
             self.clear_texts_btn.config(state="normal")
-            self.brush_mask = Image.new("L", self.preview_image.size, 0)
+            self.brush_mask = Image.new("1", self.preview_image.size, 0)
             self.brush_size = 200
             self.brush_btn.config(state="normal")
         except Exception:
@@ -338,10 +375,10 @@ class ITPTGUI:
         self.redraw_preview(force=True)
 
     def apply_mask(self, image, mask=None):
+        res = image.copy()
         if mask is not None:
-            white_layer = Image.new("RGB", image.size, (255, 255, 255))
-            image = Image.composite(white_layer, image, mask)
-        return image
+            res.paste((255, 255, 255), (0, 0), mask)
+        return res
 
     def redraw_preview(self, event=None, force=False):
         self.preview_canvas.delete("all")
@@ -361,17 +398,18 @@ class ITPTGUI:
         if force or self.mask_updated:
             display_img = self.apply_mask(display_img, self.brush_mask)
 
-        if force or self.preview_image_masked is None or self.mask_updated:
-            self.preview_image_masked = self.apply_mask(self.preview_image.copy(), self.brush_mask)
-            self.mask_updated = False
-            self.zoom_updated = True
-
         if force or self.zoomed_image is None or self.zoom_updated:
-            new_w = int(img_w * ratio)
-            new_h = int(img_h * ratio)
-            self.zoomed_image = self.preview_image_masked.resize((new_w, new_h), Image.NEAREST)
-            self.tk_image = ImageTk.PhotoImage(self.zoomed_image)
+            new_w, new_h = int(img_w * ratio), int(img_h * ratio)
+            self.zoomed_image = self.preview_image.resize((new_w, new_h), Image.NEAREST)
             self.zoom_updated = False
+            self.mask_updated = True
+
+        if self.zoomed_image_masked is None or self.mask_updated:
+            z_w, z_h = self.zoomed_image.size
+            resized_mask = self.brush_mask.resize((z_w, z_h), Image.NEAREST)
+            self.zoomed_image_masked = self.apply_mask(self.zoomed_image, resized_mask)
+            self.tk_image = ImageTk.PhotoImage(self.zoomed_image_masked)
+            self.mask_updated = False
 
         self.preview_canvas.create_image(
             canvas_w//2 + self.pan_x,
@@ -419,6 +457,20 @@ class ITPTGUI:
             color = "red" if pt.type == "node" else "blue"
             r = 5
             self.preview_canvas.create_oval(screen_x-r, screen_y-r, screen_x+r, screen_y+r, fill=color, outline="black")
+
+        # Draw brush circle
+        if self.add_mode == "brush" and self.mouse_inside_canvas:
+            visual_radius = (self.brush_size / 2) * (self.base_ratio * self.zoom)
+
+            self.preview_canvas.create_oval(
+                self.mouse_x - visual_radius,
+                self.mouse_y - visual_radius,
+                self.mouse_x + visual_radius,
+                self.mouse_y + visual_radius,
+                outline="red",
+                width=2,
+                tags="brush_cursor"
+            )
 
     # ---------- Coordinate transforms ----------
 
@@ -544,11 +596,14 @@ class ITPTGUI:
             self.redraw_preview()
 
     def do_interaction(self, event):
+        self.mouse_x = event.x
+        self.mouse_y = event.y
+
         if self.add_mode == "brush":
             ix, iy = self.screen_to_image((event.x, event.y))
             draw = ImageDraw.Draw(self.brush_mask)
             r = self.brush_size / 2
-            color = 255 if self.drag_type == "left" else 0
+            color = 1 if self.drag_type == "left" else 0
             draw.ellipse([ix-r, iy-r, ix+r, iy+r], fill=color)
             self.mask_updated = True
         elif self.drag_type == "right" or (self.drag_type == "left" and self.selected_point is None and self.selected_text_id is None):
@@ -611,6 +666,10 @@ class ITPTGUI:
         self.redraw_preview()
 
     def update_cursor(self, event):
+        if self.add_mode == "brush":
+            self.preview_canvas.config(cursor="none")
+            return
+
         hovered_point = self.get_hovered_point(event)
         hovered_text = self.get_hovered_text_id(event)
 
