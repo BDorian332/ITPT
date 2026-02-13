@@ -98,3 +98,4 @@ jobs:
         with:
           files: collected/**/*
           body_path: RELEASE.md
+          prerelease: true
