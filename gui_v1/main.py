@@ -49,6 +49,7 @@ class ITPTGUI:
         self.selected_text_id = None
 
         self.brush_size = 20
+        self.brush_shape = "square" # "circle" or "square"
 
         self.add_mode = None # "node", "corner", "text", "brush" or None
 
@@ -263,12 +264,15 @@ class ITPTGUI:
 
         # Mouse
         c.bind("<Motion>", self.on_mouse_move)
-        c.bind("<Motion>", self.on_mouse_move, add="+")
+
         c.bind("<MouseWheel>", self.on_mouse_wheel)
         c.bind("<Button-4>", self.on_mouse_wheel)
         c.bind("<Button-5>", self.on_mouse_wheel)
+
         c.bind("<Enter>", self.on_canvas_enter)
         c.bind("<Leave>", self.on_canvas_leave)
+
+        c.bind("<Button-2>", self.toggle_brush_shape)
 
         # Model change
         self.model_combobox.bind("<<ComboboxSelected>>", self.on_model_change)
@@ -462,13 +466,16 @@ class ITPTGUI:
             self.preview_canvas.create_oval(screen_x-5, screen_y-5, screen_x+5, screen_y+5, fill=color, outline="black")
 
         # Draw brush
-        if self.add_mode == "brush" and getattr(self, "mouse_inside_canvas", False):
+        if self.add_mode == "brush" and self.mouse_inside_canvas == True:
             visual_radius = (self.brush_size / 2) * ratio
-            self.preview_canvas.create_oval(
+            coords = (
                 self.mouse_x - visual_radius, self.mouse_y - visual_radius,
-                self.mouse_x + visual_radius, self.mouse_y + visual_radius,
-                outline="red", width=2, tags="brush_cursor"
+                self.mouse_x + visual_radius, self.mouse_y + visual_radius
             )
+            if self.brush_shape == "circle":
+                self.preview_canvas.create_oval(*coords, outline="red", width=2, tags="brush_cursor")
+            else:
+                self.preview_canvas.create_rectangle(*coords, outline="red", width=2, tags="brush_cursor")
 
     # ---------- Coordinate transforms ----------
 
@@ -600,7 +607,14 @@ class ITPTGUI:
             draw = ImageDraw.Draw(self.brush_mask)
             r = self.brush_size / 2
             color = 1 if self.drag_type == "left" else 0
-            draw.ellipse([ix-r, iy-r, ix+r, iy+r], fill=color)
+
+            bbox = [ix - r, iy - r, ix + r, iy + r]
+
+            if self.brush_shape == "circle":
+                draw.ellipse(bbox, fill=color)
+            else:
+                draw.rectangle(bbox, fill=color)
+
             self.image_updated = True
         elif self.drag_type == "right" or (self.drag_type == "left" and self.selected_point is None and self.selected_text_id is None):
             self.selected_point = None
@@ -725,6 +739,11 @@ class ITPTGUI:
         self.zoom = 1.0
         self.image_updated = True
         self.redraw_preview()
+
+    def toggle_brush_shape(self, event=None):
+        if self.add_mode == "brush":
+            self.brush_shape = "circle" if self.brush_shape == "square" else "square"
+            self.redraw_preview()
 
     # ---------- Output ----------
 

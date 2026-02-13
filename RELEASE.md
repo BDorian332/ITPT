@@ -1,1 +1,1 @@
-- Added brush
+- Added square brush
