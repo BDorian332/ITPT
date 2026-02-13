@@ -12,7 +12,7 @@ authors = [
     { name = "Chamaillard Lucas", email = "lchamaillard.lucas@gmail.com" },
     { name = "Reyne Matteo", email = "reynematte@cy-tech.fr" }
 ]
-requires-python = ">=3.13,<3.15"
+requires-python = ">=3.13,<3.14"
 
 [tool.setuptools.packages.find]
 where = ["."]
