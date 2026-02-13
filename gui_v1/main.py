@@ -189,6 +189,7 @@ class ITPTGUI:
         popup = tk.Toplevel(self.root)
         popup.title(f"Settings - {model_name}")
         popup.geometry("600x450")
+        popup.transient(self.root)
         popup.grab_set()
 
         entries = {}
@@ -223,7 +224,7 @@ class ITPTGUI:
             path_ent.grid(row=1, column=1, sticky="ew", padx=5)
 
             def browse_weights():
-                p = filedialog.askopenfilename(filetypes=[("Weights", "*.pth *.bin")])
+                p = filedialog.askopenfilename(parent=self.root, filetypes=[("Weights", "*.pth *.bin")])
                 if p:
                     path_ent.delete(0, tk.END)
                     path_ent.insert(0, p)
@@ -336,14 +337,14 @@ class ITPTGUI:
     # ---------- File ----------
 
     def browse_input(self):
-        path = filedialog.askopenfilename(filetypes=[("Images", "*.png *.jpg *.jpeg *.gif *.pgm *.ppm")])
+        path = filedialog.askopenfilename(parent=self.root, filetypes=[("Images", "*.png *.jpg *.jpeg *.gif *.pgm *.ppm")])
         if path:
             self.input_entry.delete(0, tk.END)
             self.input_entry.insert(0, path)
             self.update_preview()
 
     def browse_output(self):
-        path = filedialog.asksaveasfilename(defaultextension=".nwk", filetypes=[("Newick files", "*.nwk")])
+        path = filedialog.asksaveasfilename(parent=self.root, defaultextension=".nwk", filetypes=[("Newick files", "*.nwk")])
         if path:
             self.output_entry.delete(0, tk.END)
             self.output_entry.insert(0, path)

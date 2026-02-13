@@ -45,11 +45,6 @@ root/
     pyproject.toml
 ```
 
-## Requirements
-
-- Python (>=3.13,<3.15)
-- Poetry
-
 ## Usage
 
 ### For Users
@@ -142,6 +137,12 @@ print(newick.to_string())
   - Returns `newick` object.
 
 ### For Developers
+
+### Requirements
+
+- Python (>=3.13,<3.14)
+- Poetry
+- Tkinter (an optional Python module, only for the GUI)
 
 #### Project Setup
 
