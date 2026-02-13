@@ -30,6 +30,7 @@ class ITPTGUI:
         self.zoomed_image = None
         self.brush_mask = None
         self.image_updated = False
+        self.zoom = 1.0
         self.last_screen_pos = None
         self.pan_x = 0
         self.pan_y = 0
