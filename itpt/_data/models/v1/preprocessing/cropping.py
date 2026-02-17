@@ -2,6 +2,7 @@ import numpy as np
 import torch
 import torch.nn as nn
 from torchvision import models
+import cv2
 
 class CroppingModel(nn.Module):
     def __init__(self):
@@ -90,6 +91,7 @@ def extract_tree_from_image(
     model_input_size : prefered model input size
     return : list of numpy arrays [H, W, 3] uint8, optional BBoxes
     """
+    from .denoising import img_to_gray, img_to_tensor
     img_tensors_list = []
     for img_rgb in imgs_rgb:
         img_resized = cv2.resize(img_rgb, model_input_size, interpolation=cv2.INTER_LINEAR)
