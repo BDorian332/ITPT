@@ -7,7 +7,7 @@ from tkinter import ttk, filedialog, messagebox
 from pathlib import Path
 from PIL import Image, ImageTk, ImageDraw
 from itpt.models import get_list, get_model
-from itpt.core.newick import Point, scale_points
+from itpt.core.newick import Point, scale_points, scale_texts
 from itpt.core.branches import build_segments, scale_segments
 
 class Step:
@@ -787,7 +787,7 @@ class ITPTGUI:
 
                 if self.points:
                     points_norm = scale_points(self.points, scale_width=1.0/img_w, scale_height=1.0/img_h)
-                    newick = model.build_newick(points_norm, texts=self.texts)
+                    newick = model.build_newick(points_norm, None, texts=self.texts)
                     newick_str = newick.to_string()
                 else:
                     newick, points, texts = self.current_model_module.run_steps(model, np.array(input_img), steps=self.current_model_steps)
