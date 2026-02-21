@@ -787,7 +787,7 @@ class ITPTGUI:
 
                 if self.points:
                     points_norm = scale_points(self.points, scale_width=1.0/img_w, scale_height=1.0/img_h)
-                    newick = model.build_newick(points_norm, None, texts=self.texts)
+                    newick = model.build_newick(points_norm, texts=self.texts)
                     newick_str = newick.to_string()
                 else:
                     newick, points, texts = self.current_model_module.run_steps(model, np.array(input_img), steps=self.current_model_steps)
@@ -803,10 +803,10 @@ class ITPTGUI:
                     f.write(newick_str)
 
             self.root.after(0, lambda: self.show_output(newick_str))
-            self.root.after(0, lambda: messagebox.showinfo("Done", "Generation finished"))
+            self.root.after(0, lambda: messagebox.showinfo("Done", "Generation finished", parent=self.root))
 
         except Exception as e:
-            self.root.after(0, lambda e=e: messagebox.showerror("Error", str(e)))
+            self.root.after(0, lambda e=e: messagebox.showerror("Error", str(e), parent=self.root))
         finally:
             self.root.after(0, self.progress.stop)
             self.root.after(0, self.progress.grid_remove)

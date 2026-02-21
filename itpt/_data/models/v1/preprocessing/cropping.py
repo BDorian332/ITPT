@@ -1,8 +1,9 @@
 import numpy as np
 import torch
 import torch.nn as nn
-from torchvision import models
 import cv2
+from torchvision import models
+from ..utils import img_to_gray, img_to_tensor
 
 class CroppingModel(nn.Module):
     def __init__(self):
@@ -68,18 +69,10 @@ def expand_bbox(bbox, expand_ratio=0.05):
 
     return [x_min_exp, y_min_exp, x_max_exp, y_max_exp]
 
-def tensor_to_img(tensor):
-    """
-    Convert a PyTorch tensor [C, H, W] normalized back to a numpy image [H, W, C] uint8
-    """
-    img_np = tensor.permute(1, 2, 0).cpu().numpy() # [H, W, C]
-    img_np = (img_np * 255).astype(np.uint8)
-    return img_np
-
 def extract_tree_from_image(
     imgs_rgb,
     model,
-    model_input_size,
+    model_input_size=(500, 500),
     device="cpu",
     return_bboxes=False
 ):
@@ -91,13 +84,12 @@ def extract_tree_from_image(
     model_input_size : prefered model input size
     return : list of numpy arrays [H, W, 3] uint8, optional BBoxes
     """
-    from .denoising import img_to_gray, img_to_tensor
     img_tensors_list = []
     for img_rgb in imgs_rgb:
         img_resized = cv2.resize(img_rgb, model_input_size, interpolation=cv2.INTER_LINEAR)
         img_bw3 = img_to_gray(img_resized, threshold=200, out_channels=3) # [H, W, 3]
-        tensor = img_to_tensor(img_bw3).unsqueeze(0) # [1, 3, H, W]
-        img_tensors_list.append(tensor)
+        img_tensor = img_to_tensor(img_bw3).unsqueeze(0) # [1, 3, H, W]
+        img_tensors_list.append(img_tensor)
 
     img_tensors = torch.cat(img_tensors_list, dim=0).to(device) # [N, 3, H, W]
 
