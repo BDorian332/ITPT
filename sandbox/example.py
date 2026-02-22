@@ -19,7 +19,7 @@ def run_example():
     image_path = "example.png"
 
     print(f"\nConverting image: {image_path}")
-    tree = model.convert(image_path)
+    newick = model.convert(image_path)
 
     print("\nResulting Newick tree:")
-    print(tree)
+    print(newick.to_string())

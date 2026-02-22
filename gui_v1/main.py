@@ -37,7 +37,7 @@ class ITPTGUI:
         self.pan_y = 0
         self.tk_image = None
         self.drag_start = None
-        self.drag_type = None # "left" or "right"
+        self.drag_type = None # "left", "right" of "imposed"
         self.mouse_x = 0
         self.mouse_y = 0
         self.mouse_inside_canvas = False
@@ -363,6 +363,8 @@ class ITPTGUI:
         self.add_text_btn.state(["pressed"] if self.add_mode=="text" else ["!pressed"])
         self.brush_btn.state(["pressed"] if self.add_mode=="brush" else ["!pressed"])
 
+        self.redraw_preview()
+
     # ---------- File ----------
 
     def browse_input(self):
@@ -407,6 +409,8 @@ class ITPTGUI:
             self.clear_texts_btn.config(state="disabled")
             self.brush_btn.config(state="disabled")
         self.points.clear()
+        self.texts.clear()
+        self.segments.clear()
         self.redraw_preview(force=True)
 
     def apply_mask(self, image, mask=None):
@@ -497,7 +501,8 @@ class ITPTGUI:
             self.preview_canvas.create_oval(screen_x-5, screen_y-5, screen_x+5, screen_y+5, fill=color, outline="black")
 
         # Draw brush
-        if self.add_mode == "brush" and self.mouse_inside_canvas == True:
+        #if self.add_mode == "brush" and self.mouse_inside_canvas == True:
+        if self.add_mode == "brush":
             visual_radius = (self.brush_size / 2) * ratio
             coords = (
                 self.mouse_x - visual_radius, self.mouse_y - visual_radius,
@@ -572,6 +577,12 @@ class ITPTGUI:
         self.selected_point = self.get_hovered_point(event)
         self.selected_text_id = self.get_hovered_text_id(event)
 
+        ctrl_pressed = (event.state & 0x0004) != 0
+        if ctrl_pressed:
+            self.drag_start = (event.x, event.y)
+            self.drag_type = "imposed"
+            return
+
         if self.add_mode == "brush":
             self.drag_type = "left" if event.num == 1 else "right"
             self.do_interaction(event)
@@ -608,7 +619,9 @@ class ITPTGUI:
         self.mouse_x = event.x
         self.mouse_y = event.y
 
-        if self.add_mode == "brush":
+        ctrl_pressed = (event.state & 0x0004) != 0
+
+        if self.add_mode == "brush" and self.drag_type != "imposed":
             ix, iy = self.screen_to_image((event.x, event.y))
             draw = ImageDraw.Draw(self.brush_mask)
             r = self.brush_size / 2
@@ -622,7 +635,7 @@ class ITPTGUI:
                 draw.rectangle(bbox, fill=color)
 
             self.image_updated = True
-        elif self.drag_type == "right" or (self.drag_type == "left" and self.selected_point is None and self.selected_text_id is None):
+        elif self.drag_type == "imposed" or self.drag_type == "right" or (self.drag_type == "left" and self.selected_point is None and self.selected_text_id is None):
             self.selected_point = None
             self.selected_text_id = None
 
@@ -817,7 +830,9 @@ class ITPTGUI:
                     newick, points, texts = self.current_model_module.run_steps(model, np.array(input_img), steps=self.current_model_steps)
 
                     self.points = scale_points(points, scale_width=img_w, scale_height=img_h)
-                    self.texts = scale_texts(texts, scale_width=img_w, scale_height=img_h)
+
+                    if not self.texts:
+                        self.texts = scale_texts(texts, scale_width=img_w, scale_height=img_h)
 
                     self.update_segments()
 
