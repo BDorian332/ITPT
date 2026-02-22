@@ -1,7 +1,7 @@
 import numpy as np
 from typing import List, Optional, Tuple
 from numpy.typing import NDArray
-from .newick import Point, get_nearest_point, reset_points, scale_points
+from itpt.core.newick import Point, get_nearest_point, reset_points, scale_points
 
 Segment = Tuple[Tuple[float, float], Tuple[float, float]]
 
@@ -130,10 +130,17 @@ def process_root_node(
             verbose=verbose
         )
 
+        if not sym_tree:
+
+            if verbose:
+                print("    " * (depth + 1) + f"Symmetric branch is empty, creating leaf at y={sym_y}")
+
+            results.append(((node.x, sym_y), (x_leave, sym_y)))
+        else:
+            results.extend(sym_tree)
+
         results.append(((node.x, node.y), (kept_pt.x, kept_pt.y)))
         results.append(((node.x, node.y), (kept_pt.x, sym_y)))
-        results.extend(sym_tree)
-
     else:
         results.append(((node.x, node.y), (down_pt.x, down_pt.y)))
         results.append(((node.x, node.y), (up_pt.x, up_pt.y)))
@@ -146,11 +153,9 @@ def process_root_node(
             print("    " * (depth + 1) + f"Propagating right to {right_pt.to_string()}")
 
         root_sub = process_root_node(right_pt, points, x_leave, margin, depth=depth + 1, verbose=verbose)
-        if len(root_sub) == 0:
-            pass
-        elif len(root_sub) == 1:
+        if len(root_sub) == 1:
             results.append(((node.x, node.y), (x_leave, node.y)))
-        else:
+        elif len(root_sub) > 1:
             results.append(((node.x, node.y), (right_pt.x, right_pt.y)))
             results.extend(root_sub)
 

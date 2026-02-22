@@ -35,6 +35,8 @@ def crop_image_with_bbox(img, bbox):
     """
     H, W = img.shape[:2]
 
+    masked_img = np.ones_like(img) * 255
+
     x_min = max(0, int(bbox[0]))
     y_min = max(0, int(bbox[1]))
     x_max = min(W, int(bbox[2]))
@@ -43,7 +45,8 @@ def crop_image_with_bbox(img, bbox):
     if x_max <= x_min or y_max <= y_min:
         raise ValueError(f"Invalid BBox after clipping: {x_min},{y_min},{x_max},{y_max}")
 
-    return img[y_min:y_max, x_min:x_max].copy()
+    masked_img[y_min:y_max, x_min:x_max] = img[y_min:y_max, x_min:x_max]
+    return masked_img
 
 def denormalize_bbox(bbox_norm, img_w, img_h):
     """
@@ -57,7 +60,7 @@ def denormalize_bbox(bbox_norm, img_w, img_h):
     y_max = bbox_norm[3].item() * img_h
     return np.array([x_min, y_min, x_max, y_max], dtype=np.float32)
 
-def expand_bbox(bbox, expand_ratio=0.05):
+def expand_bbox(bbox, expand_ratio=0.025):
     x_min, y_min, x_max, y_max = bbox
     w = x_max - x_min
     h = y_max - y_min
@@ -81,12 +84,12 @@ def extract_tree_from_image(
 
     imgs_rgb : list of numpy arrays [H, W, 3] uint8
     model : BBox prediction model
-    model_input_size : prefered model input size
+    model_input_size : prefered model input size (H, W)
     return : list of numpy arrays [H, W, 3] uint8, optional BBoxes
     """
     img_tensors_list = []
     for img_rgb in imgs_rgb:
-        img_resized = cv2.resize(img_rgb, model_input_size, interpolation=cv2.INTER_LINEAR)
+        img_resized = cv2.resize(img_rgb, model_input_size[::-1], interpolation=cv2.INTER_LINEAR)
         img_bw3 = img_to_gray(img_resized, threshold=200, out_channels=3) # [H, W, 3]
         img_tensor = img_to_tensor(img_bw3).unsqueeze(0) # [1, 3, H, W]
         img_tensors_list.append(img_tensor)
@@ -108,7 +111,6 @@ def extract_tree_from_image(
         global_bbox = denormalize_bbox(expand_bbox(pred_bboxes_norm[i]), W, H)
 
         tree = crop_image_with_bbox(img_rgb, global_bbox)
-        tree = cv2.resize(tree, (H, W), interpolation=cv2.INTER_LINEAR)
 
         trees.append(tree)
         global_bboxes.append(global_bbox)

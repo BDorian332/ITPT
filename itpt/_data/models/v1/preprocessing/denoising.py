@@ -3,7 +3,7 @@ import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from ..utils import tensor_to_img
+from ..utils import img_to_gray, img_to_tensor, tensor_to_img
 
 class ConvBlock(nn.Module):
     def __init__(self, in_ch, out_ch):
@@ -52,12 +52,12 @@ def denoise_image(imgs_rgb, model, model_input_size=(512, 512), device="cpu"):
     """
     imgs_rgb : list of numpy arrays [H, W, 3] uint8
     model : denoising model
-    model_input_size : prefered model input size
+    model_input_size : prefered model input size (H, W)
     return : list of numpy arrays [H, W, 3] uint8
     """
     img_tensors_list = []
     for img_rgb in imgs_rgb:
-        img_resized = cv2.resize(img_rgb, model_input_size, interpolation=cv2.INTER_LINEAR)
+        img_resized = cv2.resize(img_rgb, model_input_size[::-1], interpolation=cv2.INTER_LINEAR)
         img_bw = img_to_gray(img_resized, threshold=200, out_channels=1) # [H, W, 1]
         img_tensor = img_to_tensor(img_bw).unsqueeze(0) # [1, 1, H, W]
         img_tensors_list.append(img_tensor)

@@ -18,9 +18,9 @@ class NewickInternal:
 
     def to_string(self) -> str:
         if not self.children:
-            return f"{self.name}:{self.length:.6f}"
+            return f"{self.name}:{self.length}"
         inner = ",".join(child.to_string() for child in self.children)
-        return f"({inner}):{self.length:.6f}"
+        return f"({inner}):{self.length}"
 
     def max_path_length(self, acc: float = 0.0) -> float:
         total = acc + self.length
@@ -33,6 +33,25 @@ class NewickInternal:
         for child in self.children:
             child.scale_lengths(factor)
 
+    def force_total_length(self, target: float = 1.0, current_acc: float = 0.0):
+        if not self.children:
+            self.length = max(0.0, target - current_acc)
+            return
+
+        for child in self.children:
+            child.force_total_length(target, current_acc + self.length)
+
+    def get_all_path_lengths(self, acc: float = 0.0) -> List[Tuple[str, float]]:
+        current_path = acc + self.length
+
+        if not self.children:
+            return [(self.name, current_path)]
+
+        results = []
+        for child in self.children:
+            results.extend(child.get_all_path_lengths(current_path))
+        return results
+
 class Newick:
     def __init__(self, internals: List[NewickInternal] = []):
         self.internals = internals
@@ -43,28 +62,57 @@ class Newick:
         inner = ",".join(internal.to_string() for internal in self.internals)
         return f"({inner});"
 
-    def max_path_length(self, acc: float = 0.0) -> float:
+    def max_path_length(self) -> float:
         return max(root.max_path_length() for root in self.internals)
 
     def scale_lengths(self, factor: float):
         for root in self.internals:
             root.scale_lengths(factor)
 
+    def force_total_length(self, target: float = 1.0):
+        for root in self.internals:
+            root.force_total_length(target=1.0)
+
+    def get_all_path_lengths(self) -> List[Tuple[str, float]]:
+        results = []
+        for root in self.internals:
+            results.extend(root.get_all_path_lengths())
+        return results
+
+    def check_leaf_alignment(self):
+        data = self.get_all_path_lengths()
+
+        if not data:
+            print("Empty tree.")
+            return
+
+        lengths = [d[1] for d in data]
+
+        print(f"\n--- Checking Newick Alignment ({len(data)} leaves) ---")
+        for i, (name, length) in enumerate(data):
+            print(f"Leaf {i+1} [{name}] : {length}")
+
+        print(f"Min Length : {min(lengths)}")
+        print(f"Max Length : {max(lengths)}")
+        print(f"Difference : {max(lengths) - min(lengths):.2e}")
+
     def normalize(self):
         if not self.internals:
             return
 
-        max_path_length = self.max_path_length()
+        max_len = self.max_path_length()
+        if max_len == 0: return
 
-        if max_path_length == 0:
-            return
+        self.scale_lengths(1.0 / max_len)
 
-        factor = 1.0 / max_path_length
-        self.scale_lengths(factor)
+        self.force_total_length(target=1.0)
 
-def get_nearest_label(x: float, y: float, texts: List[dict], max_distance: float) -> str:
+def get_nearest_label(x: float, y: float, texts: List[dict], max_distance: float, depth: int, verbose: bool) -> str:
     nearest_label = "leaf"
     min_distance = max_distance
+
+    if verbose:
+        print("    " * depth + f"Detecting label near point ({x}, {y})")
 
     for entry in texts:
         bbox = entry.get("bbox")
@@ -74,9 +122,14 @@ def get_nearest_label(x: float, y: float, texts: List[dict], max_distance: float
         y_center = (bbox[1] + bbox[3]) / 2
         distance = ((x - x_left) ** 2 + (y - y_center) ** 2) ** 0.5
 
+        if verbose:
+            print("    " * depth + f"    - Testing '{text}' at ({x_left:.1f}, {y_center:.1f})")
+            print("    " * depth + f"      Distance: {distance:.2f}")
+
         if distance <= min_distance:
             min_distance = distance
             nearest_label = text
+            if verbose: print("    " * depth + f"      => MATCH (New nearest)")
 
     return nearest_label
 
@@ -179,7 +232,7 @@ def process_no_root_node(
         if verbose:
             print("    " * (depth + 1) + f"No point to the right, creating leaf at x={x_leave}")
 
-        results.append(NewickInternal(get_nearest_label(x_leave, node.y, texts, max_distance), length=abs(x_leave - node.x)))
+        results.append(NewickInternal(get_nearest_label(x_leave, node.y, texts, max_distance, depth, verbose), length=abs(x_leave - node.x)))
 
     return results
 
@@ -209,7 +262,7 @@ def process_root_node(
         if verbose:
             print("    " * depth + f"Node near x_leave, creating leaf: {node.to_string()} with length {incoming_length}")
 
-        return [NewickInternal(get_nearest_label(x_leave, node.y, texts, max_distance), length=incoming_length)]
+        return [NewickInternal(get_nearest_label(x_leave, node.y, texts, max_distance, depth, verbose), length=incoming_length)]
 
     down_pt = get_nearest_point(node.x, node.y, points, "down", margin)
     up_pt = get_nearest_point(node.x, node.y, points, "up", margin)
@@ -234,7 +287,7 @@ def process_root_node(
         if verbose:
             print("    " * (depth + 1) + "No up/down branches, creating leaf")
 
-        results.append(NewickInternal(get_nearest_label(x_leave, node.y, texts, max_distance), length=incoming_length + abs(x_leave - node.x)))
+        results.append(NewickInternal(get_nearest_label(x_leave, node.y, texts, max_distance, depth, verbose), length=incoming_length + abs(x_leave - node.x)))
         return results
 
     if bool(down_tree) ^ bool(up_tree):
@@ -260,7 +313,14 @@ def process_root_node(
             verbose=verbose
         )
 
-        results.extend(sym_tree)
+        if not sym_tree:
+
+            if verbose:
+                print("    " * (depth + 1) + f"Symmetric branch is empty, creating leaf at x={x_leave}")
+
+            results.append(NewickInternal(name=get_nearest_label(x_leave, sym_y, texts, max_distance, depth, verbose), length=abs(x_leave - node.x)))
+        else:
+            results.extend(sym_tree)
 
     else:
         results.extend(down_tree)
@@ -319,19 +379,21 @@ def build_newick(
     return : Newick object or None if no points
     """
     scaled_points = scale_points(points, scale_width, scale_height)
+    scaled_aligned_points = align_points_x(scaled_points, margin)
+
     scaled_texts = scale_texts(texts, scale_width, scale_height)
 
-    if not scaled_points:
+    if not scaled_aligned_points:
         if verbose:
             print("No points provided.")
         return None
 
     if verbose:
         print("Resetting points...")
-    reset_points(scaled_points)
+    reset_points(scaled_aligned_points)
 
-    min_x = min(p.x for p in scaled_points)
-    start_candidates = [p for p in scaled_points if abs(p.x - min_x) <= margin]
+    min_x = min(p.x for p in scaled_aligned_points)
+    start_candidates = [p for p in scaled_aligned_points if abs(p.x - min_x) <= margin]
 
     if verbose:
         print(f"Minimal x found: {min_x}")
@@ -343,13 +405,13 @@ def build_newick(
     if verbose:
         print(f"Start point chosen: {start_point.to_string()}")
 
-    x_leave = max(p.x for p in scaled_points)
+    x_leave = max(p.x for p in scaled_aligned_points)
     if verbose:
         print(f"x_leave set to: {x_leave}")
 
     newick_internals = process_no_root_node(
         start_point,
-        scaled_points,
+        scaled_aligned_points,
         "up",
         x_leave,
         margin,
@@ -428,3 +490,30 @@ def tuples_to_points(nodes_tuples: List[tuple], corners_tuples: List[tuple], sca
         points.append(Point(x * width, y * height, "corner"))
 
     return points
+
+def align_points_x(points: List[Point], margin: float) -> List[Point]:
+    if not points:
+        return []
+
+    sorted_pts = sorted(points, key=lambda p: p.x)
+
+    groups = []
+    if sorted_pts:
+        current_group = [sorted_pts[0]]
+        for i in range(1, len(sorted_pts)):
+            if sorted_pts[i].x - current_group[-1].x <= margin:
+                current_group.append(sorted_pts[i])
+            else:
+                groups.append(current_group)
+                current_group = [sorted_pts[i]]
+        groups.append(current_group)
+
+    aligned_points = []
+    for group in groups:
+        avg_x = sum(p.x for p in group) / len(group)
+        for p in group:
+            new_p = Point(avg_x, p.y, p.type)
+            new_p.processed = p.processed
+            aligned_points.append(new_p)
+
+    return aligned_points

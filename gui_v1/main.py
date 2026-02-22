@@ -126,16 +126,20 @@ class ITPTGUI:
         scrollbar.pack(side="right", fill="y")
         self.output_text.configure(yscrollcommand=scrollbar.set)
 
+        # Button to copy Newick string
+        self.copy_btn = ttk.Button(root, text="Copy to clipboard", command=self.copy_newick_to_clipboard)
+        self.copy_btn.grid(row=8, column=0, columnspan=3, sticky="w", padx=5, pady=5)
+
         # Steps options
         self.steps_frame = ttk.LabelFrame(self.root, text="Steps options")
-        self.steps_frame.grid(row=8, column=0, columnspan=3, sticky="ew", padx=5, pady=5)
+        self.steps_frame.grid(row=9, column=0, columnspan=3, sticky="ew", padx=5, pady=5)
         self.step_vars = {}
 
         # Convert button + progress
         self.convert_button = ttk.Button(root, text="Convert", command=self.convert)
-        self.convert_button.grid(row=9, column=0, columnspan=3, padx=5, pady=5)
+        self.convert_button.grid(row=10, column=0, columnspan=3, padx=5, pady=5)
         self.progress = ttk.Progressbar(root, mode="indeterminate")
-        self.progress.grid(row=10, column=0, columnspan=3, sticky="ew", padx=5, pady=5)
+        self.progress.grid(row=11, column=0, columnspan=3, sticky="ew", padx=5, pady=5)
         self.progress.grid_remove()
 
         # Grid expand
@@ -318,6 +322,29 @@ class ITPTGUI:
 
     def on_canvas_leave(self, event):
         self.mouse_inside_canvas = False
+        self.redraw_preview()
+
+    def on_zoom(self, event):
+        if not self.preview_image:
+            return
+
+        cursor_x = event.x
+        cursor_y = event.y
+
+        img_x_before, img_y_before = self.screen_to_image((cursor_x, cursor_y))
+
+        zoom_factor = 1.1 if (getattr(event, "delta", 0) > 0 or getattr(event, "num", None) == 4) else 0.9
+        self.zoom *= zoom_factor
+
+        min_zoom = 0.1
+        max_zoom = 30
+        self.zoom = max(min(self.zoom, max_zoom), min_zoom)
+
+        screen_x_after, screen_y_after = self.image_to_screen(Point(img_x_before, img_y_before))
+        self.pan_x += cursor_x - screen_x_after
+        self.pan_y += cursor_y - screen_y_after
+
+        self.image_updated = True
         self.redraw_preview()
 
     # ---------- Toggle modes ----------
@@ -516,31 +543,6 @@ class ITPTGUI:
         x = cw // 2 + self.pan_x + (pt.x - iw / 2) * ratio
         y = ch // 2 + self.pan_y + (pt.y - ih / 2) * ratio
         return x, y
-
-    # ---------- Zoom ----------
-
-    def on_zoom(self, event):
-        if not self.preview_image:
-            return
-
-        cursor_x = event.x
-        cursor_y = event.y
-
-        img_x_before, img_y_before = self.screen_to_image((cursor_x, cursor_y))
-
-        zoom_factor = 1.1 if (getattr(event, "delta", 0) > 0 or getattr(event, "num", None) == 4) else 0.9
-        self.zoom *= zoom_factor
-
-        min_zoom = 0.1
-        max_zoom = 30
-        self.zoom = max(min(self.zoom, max_zoom), min_zoom)
-
-        screen_x_after, screen_y_after = self.image_to_screen(Point(img_x_before, img_y_before))
-        self.pan_x += cursor_x - screen_x_after
-        self.pan_y += cursor_y - screen_y_after
-
-        self.image_updated = True
-        self.redraw_preview()
 
     # ---------- Interaction ----------
 
@@ -747,6 +749,16 @@ class ITPTGUI:
             self.brush_shape = "circle" if self.brush_shape == "square" else "square"
             self.redraw_preview()
 
+    def copy_newick_to_clipboard(self):
+        newick_content = self.output_text.get("1.0", "end-1c")
+
+        if newick_content.strip():
+            self.root.clipboard_clear()
+            self.root.clipboard_append(newick_content)
+            original_text = self.copy_btn['text']
+            self.copy_btn.config(text="Copied!")
+            self.root.after(1500, lambda: self.copy_btn.config(text=original_text))
+
     # ---------- Output ----------
 
     def show_output(self, text):
@@ -786,14 +798,25 @@ class ITPTGUI:
                     step.enabled = self.step_vars[step.name].get()
 
                 if self.points:
+                    detect_texts_step = next((s for s in self.current_model_steps if s.name == "Detect Texts"), None)
+                    current_texts = []
+                    if detect_texts_step and detect_texts_step.enabled:
+                        if not self.texts:
+                            texts_by_image = model.detect_texts([np.array(input_img)])
+                            self.texts = scale_texts(texts_by_image[0], scale_width=img_w, scale_height=img_h)
+                            current_texts = texts_by_image[0]
+                        else:
+                            current_texts = scale_texts(self.texts, scale_width=1.0/img_w, scale_height=1.0/img_h)
+
                     points_norm = scale_points(self.points, scale_width=1.0/img_w, scale_height=1.0/img_h)
-                    newick = model.build_newick(points_norm, texts=self.texts)
+                    newick = model.build_newick(points_norm, texts=current_texts)
                     newick_str = newick.to_string()
                 else:
                     newick, points, texts = self.current_model_module.run_steps(model, np.array(input_img), steps=self.current_model_steps)
 
                     self.points = scale_points(points, scale_width=img_w, scale_height=img_h)
                     self.texts = scale_texts(texts, scale_width=img_w, scale_height=img_h)
+
                     self.update_segments()
 
                     newick_str = newick.to_string()

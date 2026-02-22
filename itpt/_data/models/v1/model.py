@@ -18,9 +18,9 @@ class v1(Model):
             "description": "Cropping + Cleaning + Heatmap",
             "version": 1,
             "weights_urls": {
-                "Cropping Model": "https://example.com/cropping.pth",
-                "Denoising Model": "https://example.com/denoising.pth",
-                "Nodes Detection Model": "https://example.com/nodesDetection.pth"
+                "Cropping Model": "https://drive.google.com/uc?export=download&id=18PVdnAuO9Jpu2GNUsFEiOOCtLhzPC01J",
+                "Denoising Model": "https://drive.google.com/uc?export=download&id=1svkkbrn3vBzNCbw-f75la2lcbVMo9Xq0",
+                "Nodes Detection Model": "https://drive.google.com/uc?export=download&id=1hEAVOPer2MFnWCbOF6rqf3r8Dn0SzbjD"
             }
         })
         self.cropping_model = CroppingModel()
@@ -36,21 +36,21 @@ class v1(Model):
         if cropping_model_weights_path_or_url is None:
             cropping_model_weights_path = self.ensure_weights(weights_dir / "cropping_model.pth", self.get_metadata()["weights_urls"]["Cropping Model"])
         elif cropping_model_weights_path_or_url.startswith(("http://", "https://")):
-            cropping_model_weights_path = self.download_weights(cropping_model_weights_path_or_url, self.get_model_cache_path() / "cropping_model.pth")
+            cropping_model_weights_path = self.download_weights(cropping_model_weights_path_or_url, self.get_model_cache_path() / "weights" / "cropping_model.pth")
         else:
             cropping_model_weights_path = Path(cropping_model_weights_path_or_url)
 
         if denoising_model_weights_path_or_url is None:
             denoising_model_weights_path = self.ensure_weights(weights_dir / "denoising_model.pth", self.get_metadata()["weights_urls"]["Denoising Model"])
         elif denoising_model_weights_path_or_url.startswith(("http://", "https://")):
-            denoising_model_weights_path = self.download_weights(denoising_model_weights_path_or_url, self.get_model_cache_path() / "denoising_model.pth")
+            denoising_model_weights_path = self.download_weights(denoising_model_weights_path_or_url, self.get_model_cache_path() / "weights" / "denoising_model.pth")
         else:
             denoising_model_weights_path = Path(denoising_model_weights_path_or_url)
 
         if nodesdetection_model_weights_path_or_url is None:
             nodesdetection_model_weights_path = self.ensure_weights(weights_dir / "nodesDetection_model.pth", self.get_metadata()["weights_urls"]["Nodes Detection Model"])
         elif nodesdetection_model_weights_path_or_url.startswith(("http://", "https://")):
-            nodesdetection_model_weights_path = self.download_weights(nodesdetection_model_weights_path_or_url, self.get_model_cache_path() / "nodesDetection_model.pth")
+            nodesdetection_model_weights_path = self.download_weights(nodesdetection_model_weights_path_or_url, self.get_model_cache_path() / "weights" / "nodesDetection_model.pth")
         else:
             nodesdetection_model_weights_path = Path(nodesdetection_model_weights_path_or_url)
 
@@ -117,12 +117,12 @@ class v1(Model):
 
     def build_newick(self, nodes, texts):
         print("Building Newick...")
-        newick = build_newick(points, texts=texts)
-        print("Newick built: ", newick.to_string())
+        newick = build_newick(nodes, texts=texts)
+        print("Newick built:", newick.to_string())
         return newick
 
     def _save_debug_images(self, imgs, prefix="debug"):
-        debug_dir = Path(__file__).resolve().parent / "debug_images"
+        debug_dir = self.get_model_cache_path() / "debug_images"
         debug_dir.mkdir(parents=True, exist_ok=True)
         for i, img in enumerate(imgs):
             if isinstance(img, np.ndarray):

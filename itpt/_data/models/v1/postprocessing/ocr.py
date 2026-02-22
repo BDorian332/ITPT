@@ -3,7 +3,7 @@ from typing import Dict, List
 from doctr.models import ocr_predictor
 
 def get_textsDetector_model():
-    return ocr_predictor(pretrained=True)
+    return ocr_predictor(pretrained=True, resolve_lines=True)
 
 def detect_texts(images: List[np.ndarray], predictor) -> List[List[dict]]:
     """
@@ -21,17 +21,21 @@ def detect_texts(images: List[np.ndarray], predictor) -> List[List[dict]]:
 
     outputs = []
     for page in result.pages:
-        entries = []
-        for block in page.blocks:
-            for line in block.lines:
-                for word in line.words:
-                    (x1, y1), (x2, y2) = word.geometry
-                    bbox = [x1, y1, x2, y2]
-                    entries.append({
-                        "bbox": bbox,
-                        "text": word.value,
-                        "score": float(word.confidence),
+            image_results = []
+            for block in page.blocks:
+                for line in block.lines:
+                    full_text = " ".join([word.value for word in line.words])
+
+                    xmin = min(w.geometry[0][0] for w in line.words)
+                    ymin = min(w.geometry[0][1] for w in line.words)
+                    xmax = max(w.geometry[1][0] for w in line.words)
+                    ymax = max(w.geometry[1][1] for w in line.words)
+
+                    image_results.append({
+                        "bbox": [xmin, ymin, xmax, ymax],
+                        "text": full_text,
+                        "score": sum(w.confidence for w in line.words) / len(line.words)
                     })
-        outputs.append(entries)
+            outputs.append(image_results)
 
     return outputs

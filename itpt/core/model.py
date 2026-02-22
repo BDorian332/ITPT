@@ -17,7 +17,7 @@ class Model(ABC):
         return self._metadata
 
     def get_model_cache_path(self):
-        return Path.home() / ".cache" / "itpt" / "weights" / self.get_metadata()["name"]
+        return Path.home() / ".cache" / "itpt" / self.get_metadata()["name"]
 
     def download_weights(self, url, dest):
         dest.parent.mkdir(parents=True, exist_ok=True)
@@ -40,7 +40,7 @@ class Model(ABC):
             print("Using local file")
             return weights_path
 
-        fallback_dir = self.get_model_cache_path()
+        fallback_dir = self.get_model_cache_path() / "weights"
         fallback_path = fallback_dir / weights_path.name
 
         if fallback_path.exists():

@@ -3,6 +3,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import numpy as np
 import cv2
+from itpt.core import Point
 from ..utils import img_to_gray, img_to_tensor
 
 class ConvBlock(nn.Module):
@@ -84,10 +85,8 @@ def infer_heatmap_points(
     threshold,
     nms_size
 ):
-    print("Preparing image tensor")
     C, H, W = img_tensor.shape
 
-    print(f"Running heatmap model (H={H}, W={W})")
     x = img_tensor.unsqueeze(0)
     x = F.interpolate(x, size=model_input_size, mode="bilinear", align_corners=False)
     x = x.to(device)
@@ -102,7 +101,6 @@ def infer_heatmap_points(
     if heatmaps.shape[0] != 2:
         raise ValueError(f"Expected 2 channels (node, corner), got {heatmaps.shape[0]}")
 
-    print("Extracting peaks")
     hm_node = heatmaps[0]
     hm_corner = heatmaps[1]
 
@@ -114,8 +112,6 @@ def infer_heatmap_points(
 
     nodes = [Point(x*sx, y*sy, "node") for (x, y, score) in node_hm_pts]
     corners = [Point(x*sx, y*sy, "corner") for (x, y, score) in corner_hm_pts]
-
-    print(f"Found {len(nodes)} nodes and {len(corners)} corners")
 
     return nodes + corners
 
@@ -129,7 +125,6 @@ def detect_nodes(
     threshold=0.3,
     nms_size=3,
 ):
-    print(f"Detecting nodes on {len(imgs_rgb)} image(s)...")
     nodes_by_image = []
     for i, tree_img in enumerate(imgs_rgb):
         img_bw1 = img_to_gray(tree_img, threshold=None, out_channels=1)

@@ -2,8 +2,8 @@ from typing import List
 from gui_v1.main import Step
 
 STEPS = [
-    Step("Extract Tree", default_enabled=True),
-    Step("Clean Tree", default_enabled=True),
+    Step("Extract Tree", default_enabled=False),
+    Step("Clean Tree", default_enabled=False),
     Step("Detect Texts", default_enabled=True)
 ]
 
