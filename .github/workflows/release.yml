@@ -39,7 +39,7 @@ jobs:
         shell: bash
         run: |
           poetry run itpt-build --lib
-          for gui_ver in v1 v2; do
+          for gui_ver in v1; do
             poetry run itpt-build --gui $gui_ver
           done
 
