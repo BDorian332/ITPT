@@ -168,6 +168,8 @@ def build_segments(
     scale_height: float = 1500,
     verbose: bool = False
 ) -> Optional[List[Segment]]:
+    if verbose:
+        print("Scaling points...")
     scaled_points = scale_points(points, scale_width, scale_height)
 
     if not points:

@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools", "torch"]
+requires = ["setuptools"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -14,15 +14,22 @@ authors = [
 ]
 requires-python = ">=3.13,<3.14"
 
+[tool.setuptools]
+include-package-data = true
+
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["itpt*"]
+include = ["itpt"]
 
 [tool.setuptools.package-data]
-"itpt" = ["_data/"]
+"itpt" = ["_data/*"]
 
 [tool.setuptools.exclude-package-data]
-"itpt" = ["_data/models/v0/"]
+"itpt" = [
+    "*/__pycache__/*",
+    "_data/models/*/weights/*",
+    "_data/models/v0/*"
+]
 
 [tool.poetry.scripts]
 itpt-build = "tools.build:main"

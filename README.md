@@ -20,10 +20,11 @@ root/
         _data/
             models/
                 ...
-    gui_v0/
-	    __init__.py
-        main.py
     gui_v1/
+	__init__.py
+        main.py
+	...
+    gui_v2/
         __init__.py
         ...
     dev/

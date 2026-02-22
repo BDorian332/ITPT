@@ -6,7 +6,6 @@ import platform
 from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).parents[1]
-MODELS_SRC_DIR = PROJECT_ROOT / "itpt" / "_data" / "models"
 MODELS_TO_INCLUDE = ["v1"]
 
 def build_lib():
@@ -29,14 +28,27 @@ def build_gui(version, debug):
     sep = ";" if os.name == "nt" else ":"
 
     data_args = []
+
+    models_src_dir = PROJECT_ROOT / "itpt" / "_data" / "models"
     for model_name in MODELS_TO_INCLUDE:
-        model_path = MODELS_SRC_DIR / model_name
+        model_path = models_src_dir / model_name
         if model_path.exists():
-            dest_path = f"itpt/_data/models/{model_name}"
-            data_args.extend(["--add-data", f"{model_path}{sep}{dest_path}"])
+            for root, dirs, files in os.walk(model_path):
+                if "__pycache__" in dirs:
+                    dirs.remove("__pycache__")
+                if "weights" in dirs:
+                    dirs.remove("weights")
+
+                for file in files:
+                    source_file = Path(root) / file
+                    rel_path = source_file.relative_to(PROJECT_ROOT)
+                    dest_dir = rel_path.parent
+
+                    data_args.extend(["--add-data", f"{source_file}{sep}{dest_dir}"])
+
             print(f"Including model: {model_name}")
         else:
-            print(f"Warning: Model folder {model_name} not found in {MODELS_SRC_DIR}")
+            print(f"Warning: Model folder {model_name} not found")
 
     cmd = [
         "pyinstaller",
@@ -55,9 +67,12 @@ def build_gui(version, debug):
         cmd += ["--windowed"]
 
     cmd += [
-        "--collect-all", "torch",
-        "--collect-all", "cv2",
-        "--collect-all", "doctr",
+        "--collect-submodules", "itpt",
+        "--exclude-module", "itpt._data",
+        "--collect-submodules", f"gui_{version}",
+        "--collect-submodules", "torch",
+        "--collect-submodules", "cv2",
+        "--collect-submodules", "doctr",
         *data_args,
         "--name", f"gui-{version}",
         str(gui_main)

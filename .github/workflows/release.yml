@@ -40,7 +40,7 @@ jobs:
         run: |
           poetry run itpt-build --lib
           for gui_ver in v1; do
-            poetry run itpt-build --gui $gui_ver
+            poetry run itpt-build --gui $gui_ver --debug
           done
 
       - name: Prepare final assets
@@ -51,6 +51,7 @@ jobs:
 
           if [[ "${RUNNER_OS}" == "Linux" ]]; then
             cp dist/*.whl final_assets/
+            cp dist/*.tar.gz final_assets/
           fi
 
           for gui_ver in v1 v2; do

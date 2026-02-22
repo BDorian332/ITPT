@@ -6,6 +6,7 @@ import numpy as np
 from tkinter import ttk, filedialog, messagebox
 from pathlib import Path
 from PIL import Image, ImageTk, ImageDraw
+from importlib import resources
 from itpt.models import get_list, get_model
 from itpt.core.newick import Point, scale_points, scale_texts
 from itpt.core.branches import build_segments, scale_segments
@@ -159,8 +160,9 @@ class ITPTGUI:
             return
 
         model_name = model_name.replace(" ", "_")
+
         try:
-            model_module = importlib.import_module(f"gui_v1.models.{model_name}")
+            model_module = importlib.import_module(f"gui_v1.models_modules.{model_name}")
         except ModuleNotFoundError:
             display_no_steps()
             self.current_model_module = None

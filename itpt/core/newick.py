@@ -378,9 +378,14 @@ def build_newick(
     verbose : if True, print debug info
     return : Newick object or None if no points
     """
+    if verbose:
+        print("Scaling points...")
     scaled_points = scale_points(points, scale_width, scale_height)
+    if verbose:
+        print("Aligning points...")
     scaled_aligned_points = align_points_x(scaled_points, margin)
 
+    print("Scaling texts...")
     scaled_texts = scale_texts(texts, scale_width, scale_height)
 
     if not scaled_aligned_points:
@@ -484,10 +489,10 @@ def tuples_to_points(nodes_tuples: List[tuple], corners_tuples: List[tuple], sca
     points = []
 
     for x, y in nodes_tuples:
-        points.append(Point(x * width, y * height, "node"))
+        points.append(Point(x * scale_width, y * scale_height, "node"))
 
     for x, y in corners_tuples:
-        points.append(Point(x * width, y * height, "corner"))
+        points.append(Point(x * scale_width, y * scale_height, "corner"))
 
     return points
 
