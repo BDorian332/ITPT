@@ -18,9 +18,9 @@ class v1(Model):
             "description": "Cropping + Cleaning + Heatmap",
             "version": 1,
             "weights_urls": {
-                "Cropping Model": "https://drive.google.com/uc?export=download&id=18PVdnAuO9Jpu2GNUsFEiOOCtLhzPC01J",
-                "Denoising Model": "https://drive.google.com/uc?export=download&id=1svkkbrn3vBzNCbw-f75la2lcbVMo9Xq0",
-                "Nodes Detection Model": "https://drive.google.com/uc?export=download&id=1hEAVOPer2MFnWCbOF6rqf3r8Dn0SzbjD"
+                "Cropping Model": "https://www.dropbox.com/scl/fi/tiazvlhi8upm4dn6dkzjs/cropping_model.pth?rlkey=p1tx2rnknxk4qmfttf4pg7v8s&e=1&st=dokx6whz&dl=1",
+                "Denoising Model": "https://www.dropbox.com/scl/fi/ylmwmvx2w6kv817wfkgj1/denoising_model.pth?rlkey=qd4yn9puqov8kc7e1decycgfe&st=twthi2we&dl=1",
+                "Nodes Detection Model": "https://www.dropbox.com/scl/fi/r59bn34t2b97yql8ovn7w/nodesDetection_model.pth?rlkey=haqzn4nm3gw4uydyuw113mby2&st=n6maem3c&dl=1"
             }
         })
         self.cropping_model = CroppingModel()

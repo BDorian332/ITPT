@@ -28,7 +28,7 @@ class Model(ABC):
         print(f"Downloading weights from {url} to {dest}")
         try:
             urllib.request.urlretrieve(url, dest)
-            print(f"Downloaded {weights_path.name} successfully.")
+            print(f"Downloaded {dest.name} successfully.")
         except Exception as e:
             raise RuntimeError(f"Failed to download {dest.name} from {url}: {e}")
 

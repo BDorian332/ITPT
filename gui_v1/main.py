@@ -829,6 +829,7 @@ class ITPTGUI:
             self.root.after(0, lambda: messagebox.showinfo("Done", "Generation finished", parent=self.root))
 
         except Exception as e:
+            print(e)
             self.root.after(0, lambda e=e: messagebox.showerror("Error", str(e), parent=self.root))
         finally:
             self.root.after(0, self.progress.stop)
