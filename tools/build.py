@@ -16,7 +16,7 @@ def build_lib():
         print(f"Failed to build library: {e}")
         sys.exit(1)
 
-def build_gui(version, debug):
+def build_gui(version, debug, include_weights):
     gui_dir = PROJECT_ROOT / f"gui_{version}"
     gui_main = gui_dir / "main.py"
 
@@ -36,7 +36,7 @@ def build_gui(version, debug):
             for root, dirs, files in os.walk(model_path):
                 if "__pycache__" in dirs:
                     dirs.remove("__pycache__")
-                if "weights" in dirs:
+                if "weights" in dirs and not include_weights:
                     dirs.remove("weights")
 
                 for file in files:
@@ -89,13 +89,14 @@ def main():
     parser.add_argument("--lib", action="store_true", help="Build Python library only")
     parser.add_argument("--gui", nargs="?", const="v1", choices=["v1", "v2"], help="Build standalone GUI (v1 or v2). Defaults to v1.")
     parser.add_argument("--debug", action="store_true", help="Run bundled application in console/debug mode (do not hide terminal)")
+    parser.add_argument("--include-weights", action="store_true", help="Include model weights in the build (only works with --gui)")
     args = parser.parse_args()
 
     if args.lib:
         build_lib()
 
     if args.gui:
-        build_gui(args.gui, args.debug)
+        build_gui(args.gui, args.debug, args.include_weights)
 
     if not (args.lib or args.gui):
         print("Nothing to do. Use --lib, or --gui [v1|v2]. You can also use --debug.")
