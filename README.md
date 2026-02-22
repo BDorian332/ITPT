@@ -123,10 +123,10 @@ print(newick.to_string())
 - `extract_tree(imgs_rgb)`:
   - Uses `CroppingModel` to locate and crop trees from a list of images.
   - Returns `trees` (list of arrays of cropped images).
-- `clean_tree(cropped_trees)`:
+- `clean_tree(imgs_rgb)`:
   - Uses `DenoisingModel` to clean the extracted trees.
   - Returns `cleaned_trees` (list of arrays of cleaned images).
-- `detect_nodes(cleaned_trees)`:
+- `detect_nodes(imgs_rgb)`:
   - Uses `NodesDetectionModel` to analyzes cleaned images to detect junctions and tips.
   - Returns `nodes_by_image` (list of lists of `Point` representing images nodes).
 - `detect_texts(imgs_rgb)`:
@@ -134,7 +134,7 @@ print(newick.to_string())
   - Returns `texts_by_image` (list of lists of texts of original images. Each text is represented by its string and its bounding box).
 - `build_newick(nodes, texts)`:
   - Constructs a Newick object from detected nodes and texts.
-  - Returns `newick` object.
+  - Returns `newick` (a `Newick` object).
 
 ### For Developers
 
