@@ -77,6 +77,7 @@ jobs:
         with:
           name: build-${{ runner.os }}
           path: artifacts/*
+          retention-days: 1
 
   release:
     name: Create Release
