@@ -9,7 +9,7 @@ permissions:
   contents: write
 
 jobs:
-  build:
+  build_and_release:
     name: Build (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
 
@@ -43,60 +43,39 @@ jobs:
             poetry run itpt-build --gui $gui_ver
           done
 
-      - name: Prepare artifacts
+      - name: Prepare final assets
         shell: bash
         run: |
           ls -l dist
-          mkdir -p artifacts
+          mkdir -p final_assets
 
           if [[ "${RUNNER_OS}" == "Linux" ]]; then
-            cp dist/*.whl artifacts/
+            cp dist/*.whl final_assets/
           fi
 
           for gui_ver in v1 v2; do
             if [[ "${RUNNER_OS}" == "Linux" ]]; then
-              cp dist/gui-${gui_ver} artifacts/gui-${gui_ver}-Linux
+              cp dist/gui-${gui_ver} final_assets/gui-${gui_ver}-Linux
             elif [[ "${RUNNER_OS}" == "macOS" ]]; then
               cd dist
               if [[ -d gui-${gui_ver}.app ]]; then
-                zip -r ../artifacts/gui-${gui_ver}-macOS.app.zip gui-${gui_ver}.app
+                zip -r ../final_assets/gui-${gui_ver}-macOS.app.zip gui-${gui_ver}.app
               fi
               if [[ -d gui-${gui_ver} ]]; then
-                zip -r ../artifacts/gui-${gui_ver}-macOS.zip gui-${gui_ver}
+                zip -r ../final_assets/gui-${gui_ver}-macOS.zip gui-${gui_ver}
               fi
               cd ..
             elif [[ "${RUNNER_OS}" == "Windows" ]]; then
-              cp dist/gui-${gui_ver}.exe artifacts/gui-${gui_ver}-Windows.exe
+              cp dist/gui-${gui_ver}.exe final_assets/gui-${gui_ver}-Windows.exe
             fi
           done
 
-          ls -l artifacts
+          ls -l final_assets
 
-      - name: Upload artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: build-${{ runner.os }}
-          path: artifacts/*
-          retention-days: 1
-
-  release:
-    name: Create Release
-    needs: build
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout repo
-        uses: actions/checkout@v4
-
-      - name: Download all artifacts
-        uses: actions/download-artifact@v4
-        with:
-          path: collected
-          merge-multiple: true
-
-      - name: Create GitHub Release
+      - name: Upload to GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          files: collected/**/*
+          files: final_assets/**/*
           body_path: RELEASE.md
+          append_body: false
           prerelease: true
