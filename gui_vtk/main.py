@@ -940,9 +940,8 @@ class ITPTGUI:
                             texts_by_image = model.detect_texts([np.array(input_img)])
                             self.texts = scale_texts(texts_by_image[0], scale_width=img_w, scale_height=img_h)
                             current_texts = texts_by_image[0]
-                        else:
-                            current_texts = scale_texts(self.texts, scale_width=1.0/img_w, scale_height=1.0/img_h)
 
+                    current_texts = scale_texts(self.texts, scale_width=1.0/img_w, scale_height=1.0/img_h)
                     points_norm = scale_points(self.points, scale_width=1.0/img_w, scale_height=1.0/img_h)
                     newick = model.build_newick(points_norm, texts=current_texts)
                     newick_str = newick.to_string()

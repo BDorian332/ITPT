@@ -1,5 +1,7 @@
-from typing import List, Tuple, Optional
-from .utils import Point, get_nearest_point, get_nearest_label, reset_points, scale_points, scale_texts, align_points_x
+import re
+import numpy as np
+from typing import List, Tuple, Optional, Dict, Any
+from .utils import Point, get_nearest_point, get_nearest_label, reset_points, scale_points, scale_texts, align_points_x, calculate_similarity
 
 class NewickInternal:
     def __init__(self, name: Optional[str] = None, length: float = 0.0, children: List["NewickInternal"] = []):
@@ -95,8 +97,23 @@ class Newick:
         if max_len == 0: return
 
         self.scale_lengths(1.0 / max_len)
-
         self.force_total_length(target=1.0)
+
+    def estimate_yule_lambda(self) -> float:
+        n = len(self.get_all_path_lengths())
+        max_l = self.max_path_length()
+        if n < 2 or max_l <= 0: return 0.0
+        return float(np.log(n) / max_l)
+
+    def estimate_birth_death(self, eps: float = 0.5) -> Tuple[float, float, float]:
+        n = len(self.get_all_path_lengths())
+        max_l = self.max_path_length()
+        if n < 2 or max_l <= 0: return 0.0, 0.0, 0.0
+
+        lam = (np.log(n) - np.log(1 - eps)) / max_l
+        mu = lam * eps
+        r = lam - mu
+        return float(lam), float(mu), float(r)
 
 def process_no_root_node(
     node: Point,
@@ -366,3 +383,93 @@ def build_newick(
         print("Newick built.")
 
     return newick
+
+def parse_newick_string(newick_str: str) -> Newick:
+    newick_str = newick_str.strip()
+    if newick_str.endswith(";"):
+        newick_str = newick_str[:-1]
+
+    def parse_node(s: str) -> NewickInternal:
+        # "name:length" ou "(...):length"
+
+        # last ':' that is not inside "(...)"
+        depth = 0
+        colon_idx = -1
+        for i in range(len(s) - 1, -1, -1):
+            if s[i] == ')': depth += 1
+            elif s[i] == '(': depth -= 1
+            elif s[i] == ':' and depth == 0:
+                colon_idx = i
+                break
+
+        name_part = s
+        length = 0.0
+
+        if colon_idx != -1:
+            name_part = s[:colon_idx]
+            try:
+                length = float(s[colon_idx + 1:])
+            except ValueError:
+                length = 0.0
+
+        if name_part.startswith('(') and name_part.endswith(')'):
+            # Internal node
+
+            children_str = name_part[1:-1]
+            children = []
+
+            # split by ',' at first level
+            start = 0
+            depth = 0
+            for i, char in enumerate(children_str):
+                if char == '(': depth += 1
+                elif char == ')': depth -= 1
+                elif char == ',' and depth == 0:
+                    children.append(parse_node(children_str[start:i]))
+                    start = i + 1
+            children.append(parse_node(children_str[start:]))
+
+            return NewickInternal(name=None, length=length, children=children)
+        else:
+            # Leaf
+            return NewickInternal(name=name_part, length=length, children=[])
+
+    if newick_str.startswith('(') and newick_str.endswith(')'):
+        root_node = parse_node(newick_str)
+        return Newick(internals=root_node.children if root_node.children else [root_node])
+    else:
+        # Newick is just a leaf
+        return Newick(internals=[parse_node(newick_str)])
+
+def compare_newick(ref: Newick, other: Newick, target_max_path_length: float = 1.0, birth_death_eps: float = 0.5) -> Dict[str, Any]:
+    for tree in [ref, other]:
+        tree.normalize()
+        tree.scale_lengths(target_max_path_length)
+
+    # Pure Birth (Yule)
+    y1 = ref.estimate_yule_lambda()
+    y2 = other.estimate_yule_lambda()
+
+    # Birth Death
+    lam1, mu1, r1 = ref.estimate_birth_death(eps=birth_death_eps)
+    lam2, mu2, r2 = other.estimate_birth_death(eps=birth_death_eps)
+
+    return {
+        "pure_birth_yule": {
+            "lambda_ref": y1,
+            "lambda_other": y2,
+            "similarity_percent": calculate_similarity(y1, y2),
+        },
+        "birth_death": {
+            "assumed_eps_mu_over_lambda": birth_death_eps,
+            "lambda_ref": lam1,
+            "lambda_other": lam2,
+            "lambda_similarity_percent": calculate_similarity(lam1, lam2),
+            "mu_ref": mu1,
+            "mu_other": mu2,
+            "mu_similarity_percent": calculate_similarity(mu1, mu2),
+            "net_div_r_ref": r1,
+            "net_div_r_other": r2,
+            "net_div_r_similarity_percent": calculate_similarity(r1, r2)
+        }
+    }
