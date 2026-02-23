@@ -6,8 +6,7 @@ from PIL import Image, ImageTk
 from gui_vctk.core.models import Point, PointType, POINT_COLORS
 
 # Segments preview (lignes vertes)
-from itpt.core.newick import Point as ItptPoint, scale_points
-from itpt.core.branches import build_segments, scale_segments
+from itpt.core import Point as ItptPoint, scale_points, build_segments, scale_segments
 
 
 class ImageViewer(ctk.CTkFrame):

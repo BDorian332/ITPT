@@ -5,7 +5,7 @@ from typing import List, Dict, Any
 from gui_vctk.core.models import Point as GuiPoint, PointType as GuiPointType
 
 # ITPT newick
-from itpt.core.newick import Point as ItptPoint, build_newick
+from itpt.core import Point as ItptPoint, build_newick
 
 
 def _to_itpt_nodes_and_corners(gui_points: List[GuiPoint]) -> tuple[List[ItptPoint], float]:

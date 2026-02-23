@@ -1,5 +1,4 @@
-from itpt.core import Model
-from itpt.core.newick import Newick, NewickInternal
+from itpt.core import Model, Newick, NewickInternal
 
 class ExampleModel(Model):
     def __init__(self):

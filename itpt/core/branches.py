@@ -1,9 +1,5 @@
-import numpy as np
-from typing import List, Optional, Tuple
-from numpy.typing import NDArray
-from itpt.core.newick import Point, get_nearest_point, reset_points, scale_points
-
-Segment = Tuple[Tuple[float, float], Tuple[float, float]]
+from typing import List, Optional
+from .utils import Point, get_nearest_point, reset_points, scale_points, Segment, scale_segments
 
 def process_no_root_node(
     node: Point,
@@ -213,74 +209,3 @@ def build_segments(
         print("Segments built.")
 
     return segments
-
-def scale_segment(segment: Segment, scale_width: float = 1.0, scale_height: float = 1.0) -> Segment:
-    (x1, y1), (x2, y2) = segment
-    return (x1 * scale_width, y1 * scale_height), (x2 * scale_width, y2 * scale_height)
-
-def scale_segments(segments: List[Segment], scale_width: float = 1.0, scale_height: float = 1.0) -> List[Segment]:
-    return [scale_segment(s, scale_width, scale_height) for s in segments]
-
-def draw_segment(
-    heatmap: NDArray[np.floating],
-    x1: int,
-    y1: int,
-    x2: int,
-    y2: int,
-    intensity: float,
-    thickness: int
-):
-    length = int(max(abs(x2 - x1), abs(y2 - y1))) + 1
-
-    xs = np.linspace(x1, x2, length).astype(int)
-    ys = np.linspace(y1, y2, length).astype(int)
-
-    h, w = heatmap.shape
-    half_thick = thickness // 2
-
-    for x, y in zip(xs, ys):
-        for dx in range(-half_thick, half_thick + 1):
-            for dy in range(-half_thick, half_thick + 1):
-                xi = x + dx
-                yi = y + dy
-                if 0 <= xi < w and 0 <= yi < h:
-                    heatmap[yi, xi] = min(1.0, heatmap[yi, xi] + intensity)
-
-def gaussian_blur(
-    img: NDArray[np.floating],
-    sigma: float
-):
-    radius = int(3 * sigma)
-    x = np.arange(-radius, radius + 1)
-    kernel = np.exp(-(x**2) / (2 * sigma**2))
-    kernel /= kernel.sum()
-
-    img = np.apply_along_axis(lambda m: np.convolve(m, kernel, mode="same"), 0, img)
-    img = np.apply_along_axis(lambda m: np.convolve(m, kernel, mode="same"), 1, img)
-
-    return img
-
-def segments_to_heatmap(
-    segments: List[Segment],
-    scale_x: int = 1500,
-    scale_y: int = 1500,
-    draw_intensity: float = 1.0,
-    draw_thickness: int = 1,
-    blur_sigma: float = 2.0
-):
-    heatmap = np.zeros((scale_y, scale_x), dtype=np.float32)
-
-    for (x1, y1), (x2, y2) in segments:
-        px1 = int(x1 * scale_x)
-        py1 = int(y1 * scale_y)
-        px2 = int(x2 * scale_x)
-        py2 = int(y2 * scale_y)
-
-        draw_segment(heatmap, px1, py1, px2, py2, draw_intensity, draw_thickness)
-
-    heatmap = gaussian_blur(heatmap, blur_sigma)
-
-    if heatmap.max() > 1:
-        heatmap /= heatmap.max()
-
-    return heatmap

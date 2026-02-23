@@ -2,8 +2,7 @@ import torch
 import cv2
 import numpy as np
 from pathlib import Path
-from itpt.core import Model
-from itpt.core import Point, build_newick
+from itpt.core import Model, Point, build_newick
 from .utils import load_and_preprocess_image
 from .preprocessing.cropping import extract_tree_from_image, CroppingModel
 from .preprocessing.denoising import denoise_image, DenoisingModel

@@ -8,8 +8,7 @@ from pathlib import Path
 from PIL import Image, ImageTk, ImageDraw
 from importlib import resources
 from itpt.models import get_list, get_model
-from itpt.core.newick import Point, scale_points, scale_texts
-from itpt.core.branches import build_segments, scale_segments
+from itpt.core import Point, scale_points, scale_texts, build_segments, scale_segments
 
 class Step:
     def __init__(self, name, default_enabled=True):
