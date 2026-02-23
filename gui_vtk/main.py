@@ -162,7 +162,7 @@ class ITPTGUI:
         model_name = model_name.replace(" ", "_")
 
         try:
-            model_module = importlib.import_module(f"gui_v1.models_modules.{model_name}")
+            model_module = importlib.import_module(f"gui_vtk.models_modules.{model_name}")
         except ModuleNotFoundError:
             display_no_steps()
             self.current_model_module = None

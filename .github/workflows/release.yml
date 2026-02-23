@@ -39,7 +39,7 @@ jobs:
         shell: bash
         run: |
           poetry run itpt-build --lib
-          for gui_ver in v1; do
+          for gui_ver in vtk; do
             poetry run itpt-build --gui $gui_ver --debug
           done
 
@@ -54,7 +54,7 @@ jobs:
             cp dist/*.tar.gz final_assets/
           fi
 
-          for gui_ver in v1 v2; do
+          for gui_ver in vtk vctk; do
             if [[ "${RUNNER_OS}" == "Linux" ]]; then
               cp dist/gui-${gui_ver} final_assets/gui-${gui_ver}-Linux
             elif [[ "${RUNNER_OS}" == "macOS" ]]; then

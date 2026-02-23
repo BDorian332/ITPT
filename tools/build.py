@@ -87,7 +87,7 @@ def build_gui(version, debug, include_weights):
 def main():
     parser = argparse.ArgumentParser(description="ITPT Build Tool")
     parser.add_argument("--lib", action="store_true", help="Build Python library only")
-    parser.add_argument("--gui", nargs="?", const="v1", choices=["v1", "v2"], help="Build standalone GUI (v1 or v2). Defaults to v1.")
+    parser.add_argument("--gui", nargs="?", const="vtk", choices=["vtk", "vctk"], help="Build standalone GUI (vtk or vctk). Defaults to vtk.")
     parser.add_argument("--debug", action="store_true", help="Run bundled application in console/debug mode (do not hide terminal)")
     parser.add_argument("--include-weights", action="store_true", help="Include model weights in the build (only works with --gui)")
     args = parser.parse_args()
@@ -99,7 +99,7 @@ def main():
         build_gui(args.gui, args.debug, args.include_weights)
 
     if not (args.lib or args.gui):
-        print("Nothing to do. Use --lib, or --gui [v1|v2]. You can also use --debug.")
+        print("Nothing to do.")
 
 if __name__ == "__main__":
     main()

@@ -1,5 +1,5 @@
 from typing import List
-from gui_v1.main import Step
+from gui_vtk.main import Step
 
 STEPS = [
     Step("Extract Tree", default_enabled=False),

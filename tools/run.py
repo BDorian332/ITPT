@@ -29,7 +29,7 @@ def run_sandbox():
 
 def main():
     parser = argparse.ArgumentParser(description="Run ITPT application")
-    parser.add_argument("--gui", nargs="?", const="v1", choices=["v1", "v2"], help="Run the GUI application (v1 or v2). Defaults to v1.")
+    parser.add_argument("--gui", nargs="?", const="vtk", choices=["vtk", "vctk"], help="Run the GUI application (vtk or vctk). Defaults to vtk.")
     parser.add_argument("--sandbox", action="store_true", help="Run the sandbox example")
     args = parser.parse_args()
 
@@ -40,7 +40,7 @@ def main():
         run_sandbox()
 
     if not (args.gui or args.sandbox):
-        print("=== Nothing to do. Use --gui or --sandbox ===")
+        print("Nothing to do.")
 
 if __name__ == "__main__":
     main()

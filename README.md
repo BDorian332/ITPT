@@ -13,30 +13,31 @@ root/
             branches.py
             model.py
             newick.py
-
         models/
             __init__.py
             registry.py
         _data/
             models/
                 ...
-    gui_v1/
-	__init__.py
+    gui_vtk/
+	    __init__.py
         main.py
-	...
-    gui_v2/
+	    ...
+    gui_vctk/
         __init__.py
+        main.py
         ...
     dev/
-	_datasets/
-		...
+	    _datasets/
+		    ...
         _notebooks/
-		...
+		    ...
         generators/
             __init__.py
             generator_from_notebook.py
     sandbox/
         main.py
+        ...
     tools/
 	    __init__.py
         build.py
@@ -70,7 +71,7 @@ pip install <path to the .whl just downloaded>
 pip show itpt
 ```
 
-#### Basic Usage
+#### Library Usage
 
 ```python
 from itpt.models import get_list, get_model
@@ -85,9 +86,14 @@ newick = model.convert("<input_path>")
 print(newick.to_string())
 ```
 
+#### GUI Usage
+
+- [GUI vtk](gui_vtk/README.md)
+- [GUI vctk](gui_ctk/README.md)
+
 #### Available Models
 
-**V1** - Cropping + Cleaning + Heatmap
+**V1** - Cropping, Cleaning, Heatmap
 
 **Methods**
 
