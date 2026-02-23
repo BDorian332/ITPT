@@ -4,13 +4,9 @@ from tkinter import filedialog, messagebox
 
 from gui_v2.core.models import PointType, POINT_COLORS, Point
 from gui_v2.core.pipeline import run_pipeline
-
 from gui_v2.widgets.image_viewer import ImageViewer
 from gui_v2.widgets.log_popup import LogPopup
 from gui_v2.core.newick import compute_newick
-
-
-
 
 
 class HomePage(ctk.CTkFrame):
@@ -84,8 +80,15 @@ class HomePage(ctk.CTkFrame):
         type_box.pack(fill="x", padx=12, pady=(0, 10))
         ctk.CTkLabel(type_box, text="Type de point à ajouter").pack(anchor="w", padx=10, pady=(10, 6))
 
-        for pt in [PointType.ROOT, PointType.NODE, PointType.CORNER, PointType.TIP]:
-            ctk.CTkRadioButton(type_box, text=f"{pt.value} ({POINT_COLORS[pt]})", variable=self.ptype_var, value=pt.value).pack(anchor="w", padx=10, pady=3)
+        # ✅ ROOT supprimé
+        for pt in [PointType.NODE, PointType.CORNER, PointType.TIP]:
+            ctk.CTkRadioButton(
+                type_box,
+                text=f"{pt.value} ({POINT_COLORS[pt]})",
+                variable=self.ptype_var,
+                value=pt.value
+            ).pack(anchor="w", padx=10, pady=3)
+
         ctk.CTkFrame(type_box, height=6, fg_color="transparent").pack()
 
         actions = ctk.CTkFrame(right)
@@ -111,8 +114,6 @@ class HomePage(ctk.CTkFrame):
 
     def _apply_mode(self):
         self.viewer.set_mode(self.mode_var.get())
-
-
 
     def _show_drop_zone(self):
         self.drop_zone.grid()
@@ -178,8 +179,6 @@ class HomePage(ctk.CTkFrame):
 
         popup.run_in_thread(_do_pipeline, on_success=_ok, on_error=_err)
 
-
-
     # ---------------------------
     # NEWICK
     # ---------------------------
@@ -195,44 +194,42 @@ class HomePage(ctk.CTkFrame):
             return
         NewickWindow(self, newick_str)
 
-
     # ---------------------------
     # Leaf panel
     # ---------------------------
-
     def refresh_leaf_panel(self):
-                for child in self.leaves_list.winfo_children():
-                    child.destroy()
+        for child in self.leaves_list.winfo_children():
+            child.destroy()
 
-                points = self.viewer.get_points()
-                tip_indices = [i for i, p in enumerate(points) if p.ptype.value == "tip"]
+        points = self.viewer.get_points()
+        tip_indices = [i for i, p in enumerate(points) if p.ptype.value == "tip"]
 
-                if not tip_indices:
-                    ctk.CTkLabel(self.leaves_list, text="(aucune)", text_color="gray").pack(anchor="w", padx=6, pady=4)
-                    return
+        if not tip_indices:
+            ctk.CTkLabel(self.leaves_list, text="(aucune)", text_color="gray").pack(anchor="w", padx=6, pady=4)
+            return
 
-                for n, idx in enumerate(tip_indices, start=1):
-                    p = points[idx]
+        for n, idx in enumerate(tip_indices, start=1):
+            p = points[idx]
 
-                    row = ctk.CTkFrame(self.leaves_list)
-                    row.pack(fill="x", padx=6, pady=4)
+            row = ctk.CTkFrame(self.leaves_list)
+            row.pack(fill="x", padx=6, pady=4)
 
-                    ctk.CTkLabel(row, text=f"{n}.", width=28).pack(side="left", padx=(6, 6))
+            ctk.CTkLabel(row, text=f"{n}.", width=28).pack(side="left", padx=(6, 6))
 
-                    entry = ctk.CTkEntry(row)
-                    entry.pack(side="left", fill="x", expand=True, padx=(0, 6))
-                    entry.insert(0, p.label or f"tip{n}")
+            entry = ctk.CTkEntry(row)
+            entry.pack(side="left", fill="x", expand=True, padx=(0, 6))
+            entry.insert(0, p.label or f"tip{n}")
 
-                    def commit_label(tip_index=idx, widget=entry):
-                        new_name = widget.get().strip()
-                        if not new_name:
-                            new_name = "tip"
-                            widget.delete(0, "end")
-                            widget.insert(0, new_name)
-                        self.viewer.set_point_label(tip_index, new_name)
+            def commit_label(tip_index=idx, widget=entry):
+                new_name = widget.get().strip()
+                if not new_name:
+                    new_name = "tip"
+                    widget.delete(0, "end")
+                    widget.insert(0, new_name)
+                self.viewer.set_point_label(tip_index, new_name)
 
-                    entry.bind("<Return>", lambda e, f=commit_label: f())
-                    entry.bind("<FocusOut>", lambda e, f=commit_label: f())
+            entry.bind("<Return>", lambda e, f=commit_label: f())
+            entry.bind("<FocusOut>", lambda e, f=commit_label: f())
 
 
 class NewickWindow(ctk.CTkToplevel):
