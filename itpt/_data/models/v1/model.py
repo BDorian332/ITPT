@@ -20,12 +20,12 @@ class v1(Model):
             "weights_urls": {
                 "Cropping Model": "https://www.dropbox.com/scl/fi/tiazvlhi8upm4dn6dkzjs/cropping_model.pth?rlkey=p1tx2rnknxk4qmfttf4pg7v8s&e=1&st=dokx6whz&dl=1",
                 "Denoising Model": "https://www.dropbox.com/scl/fi/ylmwmvx2w6kv817wfkgj1/denoising_model.pth?rlkey=qd4yn9puqov8kc7e1decycgfe&st=twthi2we&dl=1",
-                "Nodes Detection Model": "https://www.dropbox.com/scl/fi/r59bn34t2b97yql8ovn7w/nodesDetection_model.pth?rlkey=haqzn4nm3gw4uydyuw113mby2&st=n6maem3c&dl=1"
+                "Nodes Detection Model": "https://www.dropbox.com/scl/fi/xtw6pm2yq2rxgpc7nj32p/nodesDetection_model.pth?rlkey=n86pz9v3r3py8kb8wo9k29pwe&st=y8vor25j&dl=1"
             }
         })
         self.cropping_model = CroppingModel()
         self.denoising_model = DenoisingModel()
-        self.nodesDetection_model = NodesDetectionModel(base=16) # 8 / 16 / 32 / 64
+        self.nodesDetection_model = NodesDetectionModel(base=32) # 8 / 16 / 32 / 64
         self.textsDetector_model = None
 
     def load(self, cropping_model_weights_path_or_url=None, denoising_model_weights_path_or_url=None, nodesdetection_model_weights_path_or_url=None):
