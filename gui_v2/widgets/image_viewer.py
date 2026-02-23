@@ -439,13 +439,13 @@ class ImageViewer(ctk.CTkFrame):
         if event.state & 0x0004:  # Ctrl
             step = 5
 
-        if event.keysym == "Left":
+        if event.keysym == "Right":
             self.pan_x -= step
-        elif event.keysym == "Right":
+        elif event.keysym == "Left":
             self.pan_x += step
-        elif event.keysym == "Up":
-            self.pan_y -= step
         elif event.keysym == "Down":
+            self.pan_y -= step
+        elif event.keysym == "Up":
             self.pan_y += step
 
         self._slice_bbox = None
