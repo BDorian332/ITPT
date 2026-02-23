@@ -45,10 +45,10 @@ class ITPTGUI:
         # ---- Points, Texts, Segments and Brush ----
 
         self.points = [] # list of Point objects
-        self.selected_point = None # for drag
+        self.selected_point = None
 
         self.texts = []
-        self.selected_text_id = None
+        self.selected_texts_indices = []
 
         self.brush_size = 20
         self.brush_shape = "square" # "circle" or "square"
@@ -494,7 +494,16 @@ class ITPTGUI:
         for i, txt in enumerate(self.texts):
             x1, y1, x2, y2 = txt["bbox"]
             cx, cy = self.image_to_screen(Point(x1, y1 + (y2 - y1) / 2))
-            self.preview_canvas.create_text(cx, cy, text=txt["text"], tags=("text", f"text_{i}"), fill="red", font=("Arial", 12), anchor="w")
+
+            color = "orange" if i in self.selected_texts_indices else "red"
+
+            self.preview_canvas.create_text(
+                cx, cy, text=txt["text"],
+                tags=("text", f"text_{i}"),
+                fill=color,
+                font=("Arial", 12, "bold" if i in self.selected_texts_indices else "normal"),
+                anchor="w"
+            )
 
         # Draw points
         for pt in self.points:
@@ -575,15 +584,28 @@ class ITPTGUI:
         return None
 
     def start_interaction(self, event):
-        # Check if clicking on a point or a text
-        self.selected_point = self.get_hovered_point(event)
-        self.selected_text_id = self.get_hovered_text_id(event)
-
         ctrl_pressed = (event.state & 0x0004) != 0
-        if ctrl_pressed:
-            self.drag_start = (event.x, event.y)
+        self.drag_start = (event.x, event.y)
+
+        self.selected_point = self.get_hovered_point(event)
+        hovered_text_id = self.get_hovered_text_id(event)
+
+        if ctrl_pressed and (hovered_text_id is None or (hovered_text_id is not None and event.num == 3)):
             self.drag_type = "imposed"
+            self.redraw_preview()
             return
+
+        if hovered_text_id is not None:
+            if ctrl_pressed:
+                if hovered_text_id in self.selected_texts_indices:
+                    self.selected_texts_indices.remove(hovered_text_id)
+                else:
+                    self.selected_texts_indices.append(hovered_text_id)
+            else:
+                if hovered_text_id not in self.selected_texts_indices:
+                    self.selected_texts_indices = [hovered_text_id]
+        else:
+            self.selected_texts_indices = []
 
         if self.add_mode == "brush":
             self.drag_type = "left" if event.num == 1 else "right"
@@ -591,31 +613,36 @@ class ITPTGUI:
             return
 
         if event.num == 3:
-            self.drag_start = (event.x, event.y)
             self.drag_type = "right"
+            self.redraw_preview()
             return
 
         if self.selected_point is not None:
+            self.redraw_preview()
             return
 
-        if self.selected_text_id is not None or self.add_mode is None:
-            self.drag_start = (event.x, event.y)
+        if self.selected_texts_indices or self.add_mode is None:
             self.drag_type = "left"
+            self.redraw_preview()
             return
 
         if self.add_mode == "node" or self.add_mode == "corner":
             # Add point
             x, y = self.screen_to_image((event.x, event.y))
             self.points.append(Point(x, y, self.add_mode))
+            self.selected_point = self.points[-1]
             self.update_segments()
-            self.redraw_preview()
-        elif self.add_mode == "text":
+        elif self.add_mode == "text" and hovered_text_id is None:
+            # Add text
             x, y = self.screen_to_image((event.x, event.y))
             self.texts.append({
                 "text": "Text",
                 "bbox": (x, y, x, y)
             })
-            self.redraw_preview()
+            self.selected_texts_indices.append(len(self.texts) - 1)
+
+        self.on_mouse_move(event)
+        self.redraw_preview()
 
     def do_interaction(self, event):
         self.mouse_x = event.x
@@ -624,6 +651,8 @@ class ITPTGUI:
         ctrl_pressed = (event.state & 0x0004) != 0
 
         if self.add_mode == "brush" and self.drag_type != "imposed":
+            self.selected_point = None
+
             ix, iy = self.screen_to_image((event.x, event.y))
             draw = ImageDraw.Draw(self.brush_mask)
             r = self.brush_size / 2
@@ -637,9 +666,8 @@ class ITPTGUI:
                 draw.rectangle(bbox, fill=color)
 
             self.image_updated = True
-        elif self.drag_type == "imposed" or self.drag_type == "right" or (self.drag_type == "left" and self.selected_point is None and self.selected_text_id is None):
+        elif self.drag_type == "imposed" or self.drag_type == "right" or (self.drag_type == "left" and self.selected_point is None and not self.selected_texts_indices):
             self.selected_point = None
-            self.selected_text_id = None
 
             # Drag image
             dx = event.x - self.drag_start[0]
@@ -654,39 +682,34 @@ class ITPTGUI:
             self.selected_point.x = x
             self.selected_point.y = y
             self.update_segments()
-        elif self.selected_text_id is not None:
-            txt = self.texts[self.selected_text_id]
+        elif self.selected_texts_indices:
             px, py = self.screen_to_image(self.drag_start)
             cx, cy = self.screen_to_image((event.x, event.y))
-            dx = cx - px
-            dy = cy - py
-            x1, y1, x2, y2 = txt["bbox"]
-            txt["bbox"] = (
-                x1 + dx,
-                y1 + dy,
-                x2 + dx,
-                y2 + dy,
-            )
+            dx, dy = cx - px, cy - py
+
+            for index in self.selected_texts_indices:
+                txt = self.texts[index]
+                x1, y1, x2, y2 = txt["bbox"]
+                txt["bbox"] = (x1 + dx, y1 + dy, x2 + dx, y2 + dy)
+
             self.drag_start = (event.x, event.y)
 
         self.redraw_preview()
 
     def end_interaction(self, event):
-        if self.zoom >= 4:
-                self.redraw_preview()
+        ctrl_pressed = (event.state & 0x0004) != 0
 
-        if event.num == 3:
+        if event.num == 3 and not ctrl_pressed:
             if self.selected_point is not None:
                 self.points.remove(self.selected_point)
                 self.update_segments()
-            elif self.selected_text_id is not None:
-                self.texts.pop(self.selected_text_id)
+            for index in sorted(self.selected_texts_indices, reverse=True):
+                self.texts.pop(index)
+            self.selected_texts_indices = []
             self.redraw_preview()
 
-        self.drag_start = None
         self.drag_type = None
         self.selected_point = None
-        self.selected_text_id = None
 
     def clear_points(self):
         self.points.clear()
