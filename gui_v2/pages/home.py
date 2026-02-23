@@ -23,7 +23,7 @@ class HomePage(ctk.CTkFrame):
         header.grid(row=0, column=0, sticky="ew", padx=14, pady=12)
         header.grid_columnconfigure(1, weight=1)
 
-        ctk.CTkLabel(header, text="Home", font=ctk.CTkFont(size=18, weight="bold")).grid(row=0, column=0, sticky="w")
+        ctk.CTkLabel(header, text="Accueil", font=ctk.CTkFont(size=18, weight="bold")).grid(row=0, column=0, sticky="w")
 
         btns = ctk.CTkFrame(header, fg_color="transparent")
         btns.grid(row=0, column=2, sticky="e")
@@ -44,7 +44,7 @@ class HomePage(ctk.CTkFrame):
         left.grid_rowconfigure(1, weight=1)
         left.grid_columnconfigure(0, weight=1)
 
-        self.drop_zone = ctk.CTkLabel(left, text="Drag & Drop une image ici (optionnel)\nou utilise 'Charger l'image'", height=60)
+        self.drop_zone = ctk.CTkLabel(left, text="Utilisez 'Charger l'image'", height=60)
         self.drop_zone.grid(row=0, column=0, sticky="ew", padx=10, pady=(10, 10))
 
         self.viewer = ImageViewer(left)

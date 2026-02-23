@@ -43,14 +43,14 @@ class WicklogenicsApp:
         self.container.grid_columnconfigure(0, weight=1)
 
         self.pages: dict[str, ctk.CTkFrame] = {
-            "home": HomePage(self.container),
-            "page2": Page2(self.container),
-            "settings": SettingsPage(self.container),
+            "Accueil": HomePage(self.container),
+            "Traitement par lot": Page2(self.container),
+            "Paramètres": SettingsPage(self.container),
         }
         for p in self.pages.values():
             p.grid(row=0, column=0, sticky="nsew")
 
-        self.show_page("home")
+        self.show_page("Accueil")
 
     def show_page(self, key: str):
         page = self.pages.get(key)

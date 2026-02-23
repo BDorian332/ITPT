@@ -12,12 +12,12 @@ class Navbar(ctk.CTkFrame):
         title = ctk.CTkLabel(self, text="Wicklogenics", font=ctk.CTkFont(size=16, weight="bold"))
         title.pack(pady=(18, 16), padx=12, anchor="w")
 
-        self._add_btn("home", "Home")
-        self._add_btn("page2", "Page 2")
+        self._add_btn("Accueil", "Accueil")
+        self._add_btn("Traitement par lot", "Traitement par lot")
 
         ctk.CTkFrame(self, fg_color="transparent").pack(expand=True, fill="both")
 
-        self._add_btn("settings", "Settings", bottom=True)
+        self._add_btn("Paramètres", "Paramètres", bottom=True)
 
     def _add_btn(self, key: str, text: str, bottom: bool = False):
         btn = ctk.CTkButton(self, text=text, anchor="w", command=lambda: self.on_navigate(key))
