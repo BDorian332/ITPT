@@ -303,7 +303,9 @@ class ITPTGUI:
             self.redraw_preview()
 
     def on_mouse_wheel(self, event):
-        if self.add_mode == "brush":
+        ctrl_pressed = (event.state & 0x0004) != 0
+
+        if self.add_mode == "brush" and not ctrl_pressed:
             delta = 0
             if event.num == 4 or event.delta > 0: delta = 5
             elif event.num == 5 or event.delta < 0: delta = -5
