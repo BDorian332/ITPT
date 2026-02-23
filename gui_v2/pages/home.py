@@ -6,7 +6,10 @@ from gui_v2.core.models import PointType, POINT_COLORS, Point
 from gui_v2.core.pipeline import run_pipeline
 
 from gui_v2.widgets.image_viewer import ImageViewer
+from gui_v2.widgets.log_popup import LogPopup
 from gui_v2.core.newick import compute_newick
+
+
 
 
 
@@ -159,20 +162,27 @@ class HomePage(ctk.CTkFrame):
         if not self.image_path:
             messagebox.showwarning("Info", "Charge une image d'abord.")
             return
-        try:
-            # run_pipeline doit retourner une liste[Point]
-            points = run_pipeline(self.image_path)
+
+        popup = LogPopup(self, title="Pipeline logs")
+        popup.focus()
+
+        def _do_pipeline():
+            return run_pipeline(self.image_path)
+
+        def _ok(points):
             self.viewer.set_points(points)
             self.refresh_leaf_panel()
-        except Exception as e:
+
+        def _err(e):
             messagebox.showerror("Erreur pipeline", str(e))
+
+        popup.run_in_thread(_do_pipeline, on_success=_ok, on_error=_err)
+
+
 
     # ---------------------------
     # NEWICK
     # ---------------------------
-
-
-
     def compute_and_show_newick(self):
         pts = self.viewer.get_points()
         if not pts:
