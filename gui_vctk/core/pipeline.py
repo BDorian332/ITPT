@@ -2,8 +2,8 @@ from __future__ import annotations
 
 from typing import Any, List
 
-from gui_v2.core.models import Point, PointType
-from gui_v2.core.settings_state import SETTINGS
+from gui_vctk.core.models import Point, PointType
+from gui_vctk.core.settings_state import SETTINGS
 
 _model = None
 _model_version = None

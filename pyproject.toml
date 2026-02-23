@@ -72,7 +72,9 @@ dev = [
     "scikit-learn"
 ]
 gui = [
-    "pyinstaller"
+    "pyinstaller",
+    "tkinterdnd2",
+    "customtkinter"
 ]
 
 [tool.poetry.group.gui]

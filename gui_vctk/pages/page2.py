@@ -2,8 +2,8 @@ import os
 import customtkinter as ctk
 from tkinter import filedialog, messagebox
 
-from gui_v2.core.pipeline import run_pipeline
-from gui_v2.core.newick import compute_newick
+from gui_vctk.core.pipeline import run_pipeline
+from gui_vctk.core.newick import compute_newick
 
 
 class Page2(ctk.CTkFrame):

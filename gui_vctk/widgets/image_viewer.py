@@ -3,7 +3,7 @@ import tkinter as tk
 import customtkinter as ctk
 from PIL import Image, ImageTk
 
-from gui_v2.core.models import Point, PointType, POINT_COLORS
+from gui_vctk.core.models import Point, PointType, POINT_COLORS
 
 # Segments preview (lignes vertes)
 from itpt.core.newick import Point as ItptPoint, scale_points

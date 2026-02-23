@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import List, Dict, Any
 
-from gui_v2.core.models import Point as GuiPoint, PointType as GuiPointType
+from gui_vctk.core.models import Point as GuiPoint, PointType as GuiPointType
 
 # ITPT newick
 from itpt.core.newick import Point as ItptPoint, build_newick

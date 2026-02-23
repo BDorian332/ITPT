@@ -1,5 +1,5 @@
 import customtkinter as ctk
-from gui_v2.core.settings_state import SETTINGS
+from gui_vctk.core.settings_state import SETTINGS
 
 
 class SettingsPage(ctk.CTkFrame):

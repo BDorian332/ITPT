@@ -29,10 +29,10 @@ class WicklogenicsApp:
         self.root.grid_rowconfigure(0, weight=1)
         self.root.grid_columnconfigure(1, weight=1)
 
-        from gui_v2.componnents.navbar import Navbar
-        from gui_v2.pages.home import HomePage
-        from gui_v2.pages.page2 import Page2
-        from gui_v2.pages.settings import SettingsPage
+        from gui_vctk.componnents.navbar import Navbar
+        from gui_vctk.pages.home import HomePage
+        from gui_vctk.pages.page2 import Page2
+        from gui_vctk.pages.settings import SettingsPage
 
         self.navbar = Navbar(self.root, on_navigate=self.show_page)
         self.navbar.grid(row=0, column=0, sticky="nsw")

@@ -2,11 +2,11 @@ import os
 import customtkinter as ctk
 from tkinter import filedialog, messagebox
 
-from gui_v2.core.models import PointType, POINT_COLORS, Point
-from gui_v2.core.pipeline import run_pipeline
-from gui_v2.widgets.image_viewer import ImageViewer
-from gui_v2.widgets.log_popup import LogPopup
-from gui_v2.core.newick import compute_newick
+from gui_vctk.core.models import PointType, POINT_COLORS, Point
+from gui_vctk.core.pipeline import run_pipeline
+from gui_vctk.widgets.image_viewer import ImageViewer
+from gui_vctk.widgets.log_popup import LogPopup
+from gui_vctk.core.newick import compute_newick
 
 
 class HomePage(ctk.CTkFrame):
