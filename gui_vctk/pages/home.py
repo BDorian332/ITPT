@@ -141,7 +141,7 @@ class HomePage(ctk.CTkFrame):
     def load_image_dialog(self):
         path = filedialog.askopenfilename(
             title="Choisir une image",
-            filetypes=[("Images", "*.png *.jpg *.jpeg *.bmp *.tif *.tiff"), ("All files", "*.*")],
+            filetypes=[("Images", "*.png *.jpg *.jpeg"), ("All files", "*.*")],
         )
         if path:
             self.load_image(path)

@@ -4,6 +4,7 @@ import threading
 import importlib
 import numpy as np
 from tkinter import ttk, filedialog, messagebox
+from tkinterdnd2 import DND_FILES, TkinterDnD
 from pathlib import Path
 from PIL import Image, ImageTk, ImageDraw
 from importlib import resources
@@ -17,8 +18,8 @@ class Step:
         self.enabled = default_enabled
 
 class ITPTGUI:
-    def __init__(self, root):
-        self.root = root
+    def __init__(self):
+        self.root = TkinterDnD.Tk()
         self.root.title("ITPTGUI")
         self.root.geometry("1000x750")
 
@@ -64,42 +65,43 @@ class ITPTGUI:
     # ---------- UI ----------
 
     def build_ui(self):
-        root = self.root
+        self.root.drop_target_register(DND_FILES)
+        self.root.dnd_bind('<<Drop>>', self.handle_drop)
 
         # Input
-        ttk.Label(root, text="Input image:").grid(row=0, column=0, sticky="w", padx=5, pady=5)
-        self.input_entry = ttk.Entry(root)
+        ttk.Label(self.root, text="Input image:").grid(row=0, column=0, sticky="w", padx=5, pady=5)
+        self.input_entry = ttk.Entry(self.root)
         self.input_entry.grid(row=0, column=1, sticky="ew", padx=5, pady=5)
         self.input_entry.bind("<KeyRelease>", lambda e: self.update_preview())
-        ttk.Button(root, text="Browse", command=self.browse_input).grid(row=0, column=2, padx=5, pady=5)
+        ttk.Button(self.root, text="Browse", command=self.browse_input).grid(row=0, column=2, padx=5, pady=5)
 
         # Output
-        ttk.Label(root, text="Output file:").grid(row=1, column=0, sticky="w", padx=5, pady=5)
-        self.output_entry = ttk.Entry(root)
+        ttk.Label(self.root, text="Output file:").grid(row=1, column=0, sticky="w", padx=5, pady=5)
+        self.output_entry = ttk.Entry(self.root)
         self.output_entry.grid(row=1, column=1, sticky="ew", padx=5, pady=5)
-        ttk.Button(root, text="Browse", command=self.browse_output).grid(row=1, column=2, padx=5, pady=5)
+        ttk.Button(self.root, text="Browse", command=self.browse_output).grid(row=1, column=2, padx=5, pady=5)
 
         # Model selection
-        ttk.Label(root, text="Select model:").grid(row=2, column=0, sticky="w", padx=5, pady=5)
+        ttk.Label(self.root, text="Select model:").grid(row=2, column=0, sticky="w", padx=5, pady=5)
         if not self.model_names:
             self.model_name_var = tk.StringVar(value="No models")
-            self.model_combobox = ttk.Combobox(root, textvariable=self.model_name_var, state="disabled")
+            self.model_combobox = ttk.Combobox(self.root, textvariable=self.model_name_var, state="disabled")
         else:
             self.model_name_var = tk.StringVar(value=self.model_names[0])
-            self.model_combobox = ttk.Combobox(root, textvariable=self.model_name_var, values=self.model_names, state="readonly")
+            self.model_combobox = ttk.Combobox(self.root, textvariable=self.model_name_var, values=self.model_names, state="readonly")
         self.model_combobox.grid(row=2, column=1, sticky="ew", padx=5, pady=5)
-        self.settings_btn = ttk.Button(root, text="Settings", command=self.open_model_settings, state="disabled" if not self.model_names else "enabled")
+        self.settings_btn = ttk.Button(self.root, text="Settings", command=self.open_model_settings, state="disabled" if not self.model_names else "enabled")
         self.settings_btn.grid(row=2, column=2, padx=5, pady=5, sticky="ew")
         self.weights_overrides = {}
 
         # Canvas
-        ttk.Label(root, text="Image preview:").grid(row=3, column=0, columnspan=3, sticky="w", padx=5, pady=5)
-        self.preview_canvas = tk.Canvas(root, bg="white")
+        ttk.Label(self.root, text="Image preview:").grid(row=3, column=0, columnspan=3, sticky="w", padx=5, pady=5)
+        self.preview_canvas = tk.Canvas(self.root, bg="white")
         self.preview_canvas.grid(row=4, column=0, columnspan=3, sticky="nsew", padx=5, pady=5)
         self.preview_canvas.bind("<Configure>", lambda e: self.redraw_preview(force=True))
 
         # Edit buttons (toggle exclusive)
-        edit_buttons_frame = ttk.Frame(root)
+        edit_buttons_frame = ttk.Frame(self.root)
         edit_buttons_frame.grid(row=5, column=0, columnspan=3, sticky="w")
         self.add_node_btn = ttk.Button(edit_buttons_frame, text="Add Node", command=lambda: self.toggle_mode("node"), state="disabled")
         self.add_corner_btn = ttk.Button(edit_buttons_frame, text="Add Corner", command=lambda: self.toggle_mode("corner"), state="disabled")
@@ -117,8 +119,8 @@ class ITPTGUI:
         self.reset_view_btn.grid(row=0, column=6, padx=5, pady=5, sticky="w")
 
         # Output text
-        ttk.Label(root, text="Generated Newick:").grid(row=6, column=0, columnspan=3, sticky="w", padx=5, pady=5)
-        output_frame = ttk.Frame(root)
+        ttk.Label(self.root, text="Generated Newick:").grid(row=6, column=0, columnspan=3, sticky="w", padx=5, pady=5)
+        output_frame = ttk.Frame(self.root)
         output_frame.grid(row=7, column=0, columnspan=3, sticky="nsew", padx=5, pady=5)
         self.output_text = tk.Text(output_frame, height=5, wrap="word")
         self.output_text.pack(side="left", fill="both", expand=True)
@@ -127,7 +129,7 @@ class ITPTGUI:
         self.output_text.configure(yscrollcommand=scrollbar.set)
 
         # Button to copy Newick string
-        self.copy_btn = ttk.Button(root, text="Copy to clipboard", command=self.copy_newick_to_clipboard)
+        self.copy_btn = ttk.Button(self.root, text="Copy to clipboard", command=self.copy_newick_to_clipboard)
         self.copy_btn.grid(row=8, column=0, columnspan=3, sticky="w", padx=5, pady=5)
 
         # Steps options
@@ -136,15 +138,15 @@ class ITPTGUI:
         self.step_vars = {}
 
         # Convert button + progress
-        self.convert_button = ttk.Button(root, text="Convert", command=self.convert)
+        self.convert_button = ttk.Button(self.root, text="Convert", command=self.convert)
         self.convert_button.grid(row=10, column=0, columnspan=3, padx=5, pady=5)
-        self.progress = ttk.Progressbar(root, mode="indeterminate")
+        self.progress = ttk.Progressbar(self.root, mode="indeterminate")
         self.progress.grid(row=11, column=0, columnspan=3, sticky="ew", padx=5, pady=5)
         self.progress.grid_remove()
 
         # Grid expand
-        root.grid_columnconfigure(1, weight=1)
-        root.grid_rowconfigure(4, weight=1)
+        self.root.grid_columnconfigure(1, weight=1)
+        self.root.grid_rowconfigure(4, weight=1)
 
     def update_steps_ui(self):
 
@@ -369,7 +371,7 @@ class ITPTGUI:
     # ---------- File ----------
 
     def browse_input(self):
-        path = filedialog.askopenfilename(parent=self.root, filetypes=[("Images", "*.png *.jpg *.jpeg *.gif *.pgm *.ppm")])
+        path = filedialog.askopenfilename(parent=self.root, filetypes=[("Images", "*.png *.jpg *.jpeg")])
         if path:
             self.input_entry.delete(0, tk.END)
             self.input_entry.insert(0, path)
@@ -380,6 +382,20 @@ class ITPTGUI:
         if path:
             self.output_entry.delete(0, tk.END)
             self.output_entry.insert(0, path)
+
+    def handle_drop(self, event):
+        file_path = event.data
+
+        if file_path.startswith('{') and file_path.endswith('}'):
+            file_path = file_path[1:-1]
+
+        suffixes = ('.png', '.jpg', '.jpeg')
+        if file_path.lower().endswith(suffixes):
+            self.input_entry.delete(0, tk.END)
+            self.input_entry.insert(0, file_path)
+            self.update_preview()
+        else:
+            messagebox.showwarning("File Type", "Please drop a valid image file.")
 
     # ---------- Preview ----------
 
@@ -885,6 +901,5 @@ class ITPTGUI:
         threading.Thread(target=self.run_conversion).start()
 
 if __name__ == "__main__":
-    root = tk.Tk()
-    app = ITPTGUI(root)
-    root.mainloop()
+    app = ITPTGUI()
+    app.root.mainloop()
