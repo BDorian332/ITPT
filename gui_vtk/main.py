@@ -1,4 +1,5 @@
 import os
+import sys
 import tkinter as tk
 import threading
 import importlib
@@ -16,6 +17,61 @@ class Step:
         self.name = name
         self.default_enabled = default_enabled
         self.enabled = default_enabled
+
+class IORedirector:
+    def __init__(self, text_widget):
+        self.text_widget = text_widget
+
+    def write(self, str):
+        self.text_widget.insert(tk.END, str)
+        self.text_widget.see(tk.END)
+
+    def flush(self):
+        pass
+
+class LogWindow(tk.Toplevel):
+    def __init__(self, parent, title="Conversion Logs"):
+        super().__init__(parent)
+        self.title(title)
+        self.geometry("700x450")
+        self.configure(bg="#2d2d2d")
+
+        main_bg = "#2d2d2d"
+        text_fg = "#e0e0e0"
+        bar_bg = "#3c3c3c"
+
+        container = tk.Frame(self, bg=main_bg)
+        container.pack(expand=True, fill="both")
+        self.text = tk.Text(
+            container,
+            bg=main_bg,
+            fg=text_fg,
+            padx=10,
+            pady=10,
+            borderwidth=0,
+            highlightthickness=0,
+            undo=False
+        )
+        self.text.pack(side="left", expand=True, fill="both")
+        scrollbar = ttk.Scrollbar(container, orient="vertical", command=self.text.yview)
+        scrollbar.pack(side="right", fill="y")
+        self.text.configure(yscrollcommand=scrollbar.set)
+
+        self.status_frame = tk.Frame(self, bg=bar_bg, height=25)
+        self.status_frame.pack(side="bottom", fill="x")
+        self.status_label = tk.Label(
+            self.status_frame,
+            text="STATUS: Initializing...",
+            bg=bar_bg,
+            fg=text_fg,
+            font=("", 10, "bold"),
+            padx=5,
+            pady=5
+        )
+        self.status_label.pack(side="left")
+
+    def update_status(self, message):
+        self.status_label.config(text=f"STATUS: {message}")
 
 class ITPTGUI:
     def __init__(self):
@@ -206,7 +262,7 @@ class ITPTGUI:
 
         weights_group = ttk.LabelFrame(main_container)
         weights_group.pack(fill="x", padx=5, pady=5)
-        bold_label = tk.Label(weights_group, text=" Weights Configuration ", font=("Arial", 10, "bold"))
+        bold_label = tk.Label(weights_group, text=" Weights Configuration ", font=("", 10, "bold"))
         weights_group.configure(labelwidget=bold_label)
 
         for i, (key, default_url) in enumerate(weights_urls.items()):
@@ -516,7 +572,7 @@ class ITPTGUI:
                 cx, cy, text=txt["text"],
                 tags=("text", f"text_{i}"),
                 fill=color,
-                font=("Arial", 12, "bold" if i in self.selected_texts_indices else "normal"),
+                font=("", 12, "bold" if i in self.selected_texts_indices else "normal"),
                 anchor="w"
             )
 
@@ -826,6 +882,8 @@ class ITPTGUI:
 
     def run_conversion(self):
         try:
+
+
             input_path = self.input_entry.get().strip()
             output_file = self.output_entry.get().strip()
             model_name = self.model_name_var.get()
@@ -833,8 +891,18 @@ class ITPTGUI:
             if not input_path or not model_name or model_name == "No models":
                 raise ValueError("Invalid input or model")
 
+            log_win = LogWindow(self.root, title=f"Logs - {Path(input_path).name}")
+
+            old_stdout = sys.stdout
+            old_stderr = sys.stderr
+            redir = IORedirector(log_win.text)
+            sys.stdout = redir
+            sys.stderr = redir
+
             img_w = self.preview_image.width
             img_h = self.preview_image.height
+
+            log_win.update_status("Model loading...")
 
             model = get_model(model_name)
             model.load(
@@ -842,6 +910,8 @@ class ITPTGUI:
                 denoising_model_weights_path_or_url=self.weights_overrides.get("Denoising Model"),
                 nodesdetection_model_weights_path_or_url=self.weights_overrides.get("Nodes Detection Model")
             )
+
+            log_win.update_status("Conversion...")
 
             input_img = self.apply_mask(self.preview_image, self.brush_mask)
 
@@ -879,8 +949,11 @@ class ITPTGUI:
                     newick_str = newick.to_string()
 
             if output_file:
+                log_win.update_status("Writing output file...")
                 with open(output_file, "w") as f:
                     f.write(newick_str)
+
+            log_win.update_status("Finished")
 
             self.root.after(0, lambda: self.show_output(newick_str))
             self.root.after(0, lambda: messagebox.showinfo("Done", "Generation finished", parent=self.root))
@@ -889,6 +962,9 @@ class ITPTGUI:
             print(e)
             self.root.after(0, lambda e=e: messagebox.showerror("Error", str(e), parent=self.root))
         finally:
+            sys.stdout = old_stdout
+            sys.stderr = old_stderr
+
             self.root.after(0, self.progress.stop)
             self.root.after(0, self.progress.grid_remove)
             self.root.after(0, lambda: self.convert_button.config(state="normal"))
