@@ -122,7 +122,7 @@ def detect_nodes(
     model_input_size=(1500, 1500),
     device="cpu",
     hm_size=1000,
-    threshold=0.3,
+    threshold=0.1,
     nms_size=3,
 ):
     nodes_by_image = []
