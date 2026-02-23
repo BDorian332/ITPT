@@ -1,7 +1,7 @@
-from sandbox.example import run_example
+from sandbox.evaluation import run_evaluation
 
 def main():
-    run_example()
+    run_evaluation()
 
 if __name__ == "__main__":
     main()
