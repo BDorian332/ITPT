@@ -152,7 +152,7 @@ class ITPTGUI:
 
         # Canvas
         ttk.Label(self.root, text="Image preview:").grid(row=3, column=0, columnspan=3, sticky="w", padx=5, pady=5)
-        self.preview_canvas = tk.Canvas(self.root, bg="white")
+        self.preview_canvas = tk.Canvas(self.root, bg="white", highlightthickness=0)
         self.preview_canvas.grid(row=4, column=0, columnspan=3, sticky="nsew", padx=5, pady=5)
         self.preview_canvas.bind("<Configure>", lambda e: self.redraw_preview(force=True))
 
@@ -255,16 +255,28 @@ class ITPTGUI:
         popup.transient(self.root)
         popup.grab_set()
 
-        entries = {}
-
         main_container = ttk.Frame(popup)
         main_container.pack(fill="both", expand=True)
 
-        weights_group = ttk.LabelFrame(main_container)
+        canvas = tk.Canvas(main_container, highlightthickness=0)
+        scrollbar = ttk.Scrollbar(main_container, orient="vertical", command=canvas.yview)
+
+        scrollable_frame = ttk.Frame(canvas)
+        scrollable_frame.bind("<Configure>", lambda e: canvas.configure(scrollregion=canvas.bbox("all")))
+
+        canvas_window = canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
+        canvas.bind('<Configure>', lambda e: canvas.itemconfig(canvas_window, width=e.width))
+        canvas.configure(yscrollcommand=scrollbar.set)
+
+        canvas.pack(side="left", fill="both", expand=True)
+        scrollbar.pack(side="right", fill="y")
+
+        weights_group = ttk.LabelFrame(scrollable_frame)
         weights_group.pack(fill="x", padx=5, pady=5)
         bold_label = tk.Label(weights_group, text=" Weights Configuration ", font=("", 10, "bold"))
         weights_group.configure(labelwidget=bold_label)
 
+        weights_entries = {}
         for i, (key, default_url) in enumerate(weights_urls.items()):
             frame = ttk.LabelFrame(weights_group, text=key)
             frame.pack(fill="x", pady=5, padx=5)
@@ -287,7 +299,7 @@ class ITPTGUI:
             path_ent.grid(row=1, column=1, sticky="ew", padx=5)
 
             def browse_weights():
-                p = filedialog.askopenfilename(parent=self.root, filetypes=[("Weights", "*.pth *.bin")])
+                p = filedialog.askopenfilename(parent=self.root, filetypes=[("Weights", "*.pth")])
                 if p:
                     path_ent.delete(0, tk.END)
                     path_ent.insert(0, p)
@@ -299,10 +311,10 @@ class ITPTGUI:
             ttk.Button(path_btns_frame, text="...", width=3, command=browse_weights).pack(side="left", padx=5)
 
             frame.columnconfigure(1, weight=1)
-            entries[key] = {"url_widget": url_ent, "path_widget": path_ent}
+            weights_entries[key] = {"url_widget": url_ent, "path_widget": path_ent}
 
         def save():
-            for key, widgets in entries.items():
+            for key, widgets in weights_entries.items():
                 current_url = widgets["url_widget"].get().strip()
                 current_path = widgets["path_widget"].get().strip()
 
@@ -882,8 +894,6 @@ class ITPTGUI:
 
     def run_conversion(self):
         try:
-
-
             input_path = self.input_entry.get().strip()
             output_file = self.output_entry.get().strip()
             model_name = self.model_name_var.get()
@@ -956,8 +966,6 @@ class ITPTGUI:
             log_win.update_status("Finished")
 
             self.root.after(0, lambda: self.show_output(newick_str))
-            self.root.after(0, lambda: messagebox.showinfo("Done", "Generation finished", parent=self.root))
-
         except Exception as e:
             print(e)
             self.root.after(0, lambda e=e: messagebox.showerror("Error", str(e), parent=self.root))

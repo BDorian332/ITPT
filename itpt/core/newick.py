@@ -298,7 +298,7 @@ def build_newick(
     max_distance: float = 20,
     scale_width: float = 1500,
     scale_height: float = 1500,
-    verbose: bool = True
+    verbose: bool = False
 ) -> Optional[Newick]:
     """
     Build a Newick tree from a list of Points and optional texts, applying separate width/height scaling.
