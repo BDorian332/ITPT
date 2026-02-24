@@ -83,6 +83,7 @@ class ITPTGUI:
 
         # ---- Preview state ----
 
+        self.current_path = ""
         self.preview_image = None
         self.zoomed_image = None
         self.brush_mask = None
@@ -505,7 +506,11 @@ class ITPTGUI:
 
     def update_preview(self):
         path = self.input_entry.get()
+        if path == self.current_path:
+            return
+
         try:
+            self.current_path = path
             self.preview_image = Image.open(path).convert("RGB")
             self.zoomed_image = self.preview_image
             self.brush_mask = Image.new("1", self.preview_image.size, 0)
