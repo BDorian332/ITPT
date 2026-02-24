@@ -118,7 +118,7 @@ class v1(Model):
         print("Building Newick for each image...")
 
         if not texts_by_image:
-            texts_by_image = [None] * len(nodes_by_image)
+            texts_by_image = [[] for _ in range(len(nodes_by_image))]
 
         newick_by_image = []
         for i, (nodes, texts) in enumerate(zip(nodes_by_image, texts_by_image), 0):
