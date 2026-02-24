@@ -929,6 +929,9 @@ class ITPTGUI:
     # ---------- Conversion ----------
 
     def run_conversion(self):
+        old_stdout = sys.stdout
+        old_stderr = sys.stderr
+
         try:
             input_path = self.input_entry.get().strip()
             output_file = self.output_entry.get().strip()
@@ -939,8 +942,6 @@ class ITPTGUI:
 
             log_win = LogWindow(self.root, title=f"Logs - {Path(input_path).name}")
 
-            old_stdout = sys.stdout
-            old_stderr = sys.stderr
             redir = IORedirector(log_win.text)
             sys.stdout = redir
             sys.stderr = redir
