@@ -119,7 +119,7 @@ print(newick.to_string())
   3. Calls `clean_tree(cropped_trees)` to denoise the result with the `DenoisingModel`.
   4. Calls `detect_nodes(cleaned_trees)` to identify nodes using `NodesDetectionModel`.
   5. Calls `detect_texts([img_rgb])` to run OCR and find texts on the original image.
-  6. Calls `build_newick(nodes_by_image[0][0], nodes_by_image[0][1], texts)` to generate the final object.
+  6. Calls `build_newick([nodes], [texts])` to generate the final object.
 - Returns: `Newick` object representing the tree.
 
 3. **Supporting Methods**
@@ -139,8 +139,8 @@ print(newick.to_string())
 - `detect_texts(imgs_rgb)`:
   - Uses OCR (`texts_detector_model`) to extract text from the images.
   - Returns `texts_by_image` (list of lists of texts of original images. Each text is represented by its string and its bounding box).
-- `build_newick(nodes, texts)`:
-  - Constructs a Newick object from detected nodes and texts.
+- `build_newick(nodes_by_image, texts_by_image)`:
+  - Constructs a Newick object from detected nodes and texts for each image.
   - Returns `newick` (a `Newick` object).
 
 ### For Developers

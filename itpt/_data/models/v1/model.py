@@ -65,19 +65,19 @@ class v1(Model):
     def convert(self, path_or_array):
         self.ensure_loaded()
 
-        img_rgb_resized, img_tensor, (H, W) = self.load_and_preprocess(path_or_array)
+        img_rgb_resized, img_tensor, (H, W) = self.load_and_preprocess_image(path_or_array)
 
         cropped_trees = self.extract_tree([img_rgb_resized])
-        cleaned_trees = self.clean_tree(cropped_trees)
+        cleaned_trees = self.clean_tree([path_or_array])
         nodes_by_image = self.detect_nodes(cleaned_trees)
         texts_by_image = self.detect_texts([img_rgb_resized])
 
-        newick = self.build_newick(nodes_by_image, texts_by_image[0])
+        newick_by_image = self.build_newick(nodes_by_image, texts_by_image)
 
         print(f"Conversion finished")
-        return newick
+        return newick_by_image[0]
 
-    def load_and_preprocess(self, path_or_array):
+    def load_and_preprocess_image(self, path_or_array):
         print("Loading and Preprocessing image...")
         img_rgb, img_tensor, (H, W) = load_and_preprocess_image(path_or_array, size=(1500, 1500))
         print(f"Image loaded: original size (H={H}, W={W}), tensor shape: {img_tensor.shape}")
@@ -114,11 +114,19 @@ class v1(Model):
         print(f"Number of texts per image: {[len(t) for t in texts_by_image]}")
         return texts_by_image
 
-    def build_newick(self, nodes, texts):
-        print("Building Newick...")
-        newick = build_newick(nodes, texts=texts)
-        print("Newick built:", newick.to_string())
-        return newick
+    def build_newick(self, nodes_by_image, texts_by_image=None):
+        print("Building Newick for each image...")
+
+        if not texts_by_image:
+            texts_by_image = [None] * len(nodes_by_image)
+
+        newick_by_image = []
+        for i, (nodes, texts) in enumerate(zip(nodes_by_image, texts_by_image), 0):
+            newick = build_newick(nodes, texts=texts)
+            print(f"Image {i}: {newick.to_string()}")
+            newick_by_image.append(newick)
+
+        return newick_by_image
 
     def _save_debug_images(self, imgs, prefix="debug"):
         debug_dir = self.get_model_cache_path() / "debug_images"

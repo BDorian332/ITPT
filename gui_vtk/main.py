@@ -943,8 +943,8 @@ class ITPTGUI:
 
                     current_texts = scale_texts(self.texts, scale_width=1.0/img_w, scale_height=1.0/img_h)
                     points_norm = scale_points(self.points, scale_width=1.0/img_w, scale_height=1.0/img_h)
-                    newick = model.build_newick(points_norm, texts=current_texts)
-                    newick_str = newick.to_string()
+                    newick_by_image = model.build_newick([points_norm], texts_by_image=[current_texts])
+                    newick_str = newick_by_image[0].to_string()
                 else:
                     newick, points, texts = self.current_model_module.run_steps(model, np.array(input_img), steps=self.current_model_steps)
 

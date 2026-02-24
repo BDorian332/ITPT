@@ -8,7 +8,8 @@ STEPS = [
 ]
 
 def run_steps(model, img_rgb, steps=None):
-    output = [img_rgb]
+    img_rgb_resized, img_tensor, (H, W) = model.load_and_preprocess_image(img_rgb)
+    output = [img_rgb_resized]
 
     extract_step = next((s for s in steps if s.name == "Extract Tree"), None)
     if extract_step and extract_step.enabled:
@@ -23,11 +24,7 @@ def run_steps(model, img_rgb, steps=None):
     detect_texts_step = next((s for s in steps if s.name == "Detect Texts"), None)
     texts_by_image = None
     if detect_texts_step and detect_texts_step.enabled:
-        texts_by_image = model.detect_texts([img_rgb])
+        texts_by_image = model.detect_texts([img_rgb_resized])
 
-    nodes = nodes_by_image[0] if nodes_by_image else []
-    texts = texts_by_image[0] if texts_by_image else []
-
-    newick = model.build_newick(nodes, texts=texts)
-
-    return newick, nodes, texts
+    newick_by_image = model.build_newick(nodes_by_image, texts_by_image=texts_by_image)
+    return newick_by_image[0], nodes_by_image[0] if nodes_by_image else [], texts_by_image[0] if texts_by_image else []
