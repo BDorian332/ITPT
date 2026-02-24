@@ -137,7 +137,7 @@ def run_pipeline(image_path: str) -> list[Point]:
     _ensure_model_loaded()
 
     # 1) Load & preprocess
-    img_rgb_resized, _img_tensor, (H, W) = _model.load_and_preprocess(image_path)
+    img_rgb_resized, _img_tensor, (H, W) = _model.load_and_preprocess_image(image_path)
 
     # 2) Pre-processing configurable
     data = [img_rgb_resized]
