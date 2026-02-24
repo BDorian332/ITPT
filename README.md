@@ -2,6 +2,8 @@
 
 A Python library for converting phylogenetic tree images to Newick format.
 
+![demo](media/demo.gif)
+
 ## License
 
 This project does not have a specific open-source license. All rights are reserved by the authors.
