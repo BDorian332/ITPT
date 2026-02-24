@@ -115,6 +115,58 @@ class Newick:
         r = lam - mu
         return float(lam), float(mu), float(r)
 
+    def compute_similarity_by_path(self, other: "Newick") -> float:
+        paths1 = self.get_all_path_lengths()
+        paths2 = other.get_all_path_lengths()
+
+        v1_raw = sorted(p[1] for p in self.get_all_path_lengths())
+        v2_raw = sorted(p[1] for p in other.get_all_path_lengths())
+
+        max_v1_raw = max(v1_raw)
+        max_v2_raw = max(v2_raw)
+        v1 = [x / max_v1_raw for x in v1_raw]
+        v2 = [x / max_v2_raw for x in v2_raw]
+
+        if not v1 and not v2: return 100.0
+        if not v2 or not v2: return 0.0
+
+        # Interpolation
+        v1_interp = np.interp(np.linspace(0, 1, 100), np.linspace(0, 1, len(v1)), v1)
+        v2_interp = np.interp(np.linspace(0, 1, 100), np.linspace(0, 1, len(v2)), v2)
+
+        similarities = [
+            calculate_similarity(p1, p2)
+            for p1, p2 in zip(v1_interp, v2_interp)
+        ]
+        return float(np.mean(similarities))
+
+    def get_depth_profile(self):
+        depths = []
+        def traverse(node, d):
+            depths.append(d)
+            for child in node.children:
+                traverse(child, d + 1)
+        for root in self.internals:
+            traverse(root, 0)
+        return sorted(depths)
+
+    def compute_similarity_by_depth(self, other: "Newick") -> float:
+        v1 = self.get_depth_profile()
+        v2 = other.get_depth_profile()
+
+        if not v1 and not v2: return 100.0
+        if not v1 or not v2: return 0.0
+
+        # Interpolation
+        v1_interp = np.interp(np.linspace(0, 1, 50), np.linspace(0, 1, len(v1)), v1)
+        v2_interp = np.interp(np.linspace(0, 1, 50), np.linspace(0, 1, len(v2)), v2)
+
+        similarities = [
+            calculate_similarity(p1, p2)
+            for p1, p2 in zip(v1_interp, v2_interp)
+        ]
+        return float(np.mean(similarities))
+
 def process_no_root_node(
     node: Point,
     points: List[Point],
@@ -441,7 +493,7 @@ def parse_newick_string(newick_str: str) -> Newick:
         # Newick is just a leaf
         return Newick(internals=[parse_node(newick_str)])
 
-def compare_newick(ref: Newick, other: Newick, target_max_path_length: float = 1.0, birth_death_eps: float = 0.5) -> Dict[str, Any]:
+def compare_newick_phylogeny(ref: Newick, other: Newick, target_max_path_length: float = 1.0, birth_death_eps: float = 0.5) -> Dict[str, Any]:
     for tree in [ref, other]:
         tree.normalize()
         tree.scale_lengths(target_max_path_length)
@@ -472,4 +524,15 @@ def compare_newick(ref: Newick, other: Newick, target_max_path_length: float = 1
             "net_div_r_other": r2,
             "net_div_r_similarity_percent": calculate_similarity(r1, r2)
         }
+    }
+
+def compare_newick_topology(ref: Newick, other: Newick) -> Dict[str, Any]:
+    path_sim = ref.compute_similarity_by_path(other)
+    depth_sim = ref.compute_similarity_by_depth(other)
+    global_sim = (path_sim + depth_sim) / 2
+
+    return {
+        "similarity_by_path": path_sim,
+        "similarity_by_depth": depth_sim,
+        "average_similarity": global_sim
     }

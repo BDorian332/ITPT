@@ -235,4 +235,4 @@ def segments_to_heatmap(
 def calculate_similarity(v1: float, v2: float) -> float:
     denominator = max(v1, v2, 1e-9)
     similarity = (1 - abs(v1 - v2) / denominator) * 100
-    return round(max(0.0, similarity), 2)
+    return max(0.0, similarity)
