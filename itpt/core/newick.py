@@ -138,7 +138,8 @@ class Newick:
             calculate_similarity(p1, p2)
             for p1, p2 in zip(v1_interp, v2_interp)
         ]
-        return float(np.mean(similarities))
+        size_penalty = min(len(v1_raw), len(v2_raw)) / max(len(v1_raw), len(v2_raw))
+        return float(np.mean(similarities) * size_penalty)
 
     def get_depth_profile(self):
         depths = []
