@@ -2,6 +2,12 @@
 
 A Python library for converting phylogenetic tree images to Newick format.
 
+## License
+
+This project does not have a specific open-source license. All rights are reserved by the authors.
+
+However, by being hosted on GitHub, this repository is subject to the [GitHub Terms of Service](https://docs.github.com/en/site-policy/github-terms/github-terms-of-service). Specifically, users are granted the right to view and fork this repository within the GitHub platform for personal or research purposes. Any other use, reproduction, or distribution of the code requires explicit permission of all authors.
+
 ## Project Structure
 
 ```
@@ -114,7 +120,7 @@ print(newick.to_string())
 - Parameters:
   - `path_or_array` (str or numpy array): path or array of the input image
 - Steps:
-  1. Calls `load_and_preprocess(path_or_array)` to read the image, resize it to 1500x1500px, and convert it to a tensor.
+  1. Calls `load_and_preprocess_image(path_or_array)` to read the image, resize it to 1500x1500px, and convert it to a tensor.
   2. Calls `extract_tree([img_rgb])` to extract the tree region using the `CroppingModel`.
   3. Calls `clean_tree(cropped_trees)` to denoise the result with the `DenoisingModel`.
   4. Calls `detect_nodes(cleaned_trees)` to identify nodes using `NodesDetectionModel`.
@@ -124,8 +130,8 @@ print(newick.to_string())
 
 3. **Supporting Methods**
 
-- `load_and_preprocess(image_path)`:
-  - Loads the image and prepares a tensor.
+- `load_and_preprocess_image(path_or_array)`:
+  - Loads and prepares the image and a tensor.
   - Returns `(img_rgb, img_tensor, (H, W))`.
 - `extract_tree(imgs_rgb)`:
   - Uses `CroppingModel` to locate and crop trees from a list of images.
