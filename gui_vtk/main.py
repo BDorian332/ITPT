@@ -113,6 +113,12 @@ class ITPTGUI:
 
         self.segments = []
 
+        # ---- Settings ----
+
+        self.weights_overrides = {}
+        self.step_vars = {}
+        self.model_settings = {}
+
         # ---- UI ----
 
         self.build_ui()
@@ -148,7 +154,6 @@ class ITPTGUI:
         self.model_combobox.grid(row=2, column=1, sticky="ew", padx=5, pady=5)
         self.settings_btn = ttk.Button(self.root, text="Settings", command=self.open_model_settings, state="disabled" if not self.model_names else "enabled")
         self.settings_btn.grid(row=2, column=2, padx=5, pady=5, sticky="ew")
-        self.weights_overrides = {}
 
         # Canvas
         ttk.Label(self.root, text="Image preview:").grid(row=3, column=0, columnspan=3, sticky="w", padx=5, pady=5)
@@ -191,7 +196,6 @@ class ITPTGUI:
         # Steps options
         self.steps_frame = ttk.LabelFrame(self.root, text="Steps options")
         self.steps_frame.grid(row=9, column=0, columnspan=3, sticky="ew", padx=5, pady=5)
-        self.step_vars = {}
 
         # Convert button + progress
         self.convert_button = ttk.Button(self.root, text="Convert", command=self.convert)
@@ -241,6 +245,10 @@ class ITPTGUI:
         self.current_model_steps = steps
 
     def open_model_settings(self):
+        def reset_ent(ent, default_val):
+            ent.delete(0, tk.END)
+            ent.insert(0, str(default_val))
+
         model_name = self.model_name_var.get()
         if not model_name or model_name == "No models":
             return
@@ -248,6 +256,7 @@ class ITPTGUI:
         model = get_model(model_name)
         metadata = model.get_metadata()
         weights_urls = metadata.get("weights_urls", {})
+        module_settings = getattr(self.current_model_module, "SETTINGS", {})
 
         popup = tk.Toplevel(self.root)
         popup.title(f"Settings - {model_name}")
@@ -255,6 +264,7 @@ class ITPTGUI:
         popup.transient(self.root)
         popup.grab_set()
 
+        # Scrollable container
         main_container = ttk.Frame(popup)
         main_container.pack(fill="both", expand=True)
 
@@ -271,19 +281,15 @@ class ITPTGUI:
         canvas.pack(side="left", fill="both", expand=True)
         scrollbar.pack(side="right", fill="y")
 
+        # Section 1
         weights_group = ttk.LabelFrame(scrollable_frame)
         weights_group.pack(fill="x", padx=5, pady=5)
-        bold_label = tk.Label(weights_group, text=" Weights Configuration ", font=("", 10, "bold"))
-        weights_group.configure(labelwidget=bold_label)
+        weights_group.configure(labelwidget=tk.Label(weights_group, text=" Weights Configuration ", font=("", 10, "bold")))
 
-        weights_entries = {}
+        weights_widgets = {}
         for i, (key, default_url) in enumerate(weights_urls.items()):
             frame = ttk.LabelFrame(weights_group, text=key)
             frame.pack(fill="x", pady=5, padx=5)
-
-            def reset_ent(ent, default_val):
-                ent.delete(0, tk.END)
-                ent.insert(0, default_val)
 
             saved_url = self.weights_overrides.get(f"{key}_url", default_url)
             ttk.Label(frame, text="URL:").grid(row=0, column=0, sticky="w", padx=5)
@@ -311,16 +317,46 @@ class ITPTGUI:
             ttk.Button(path_btns_frame, text="...", width=3, command=browse_weights).pack(side="left", padx=5)
 
             frame.columnconfigure(1, weight=1)
-            weights_entries[key] = {"url_widget": url_ent, "path_widget": path_ent}
+            weights_widgets[key] = {"url_widget": url_ent, "path_widget": path_ent}
+
+        # Section 2
+        param_widgets = {}
+        if module_settings:
+            param_group = ttk.LabelFrame(scrollable_frame)
+            param_group.pack(fill="x", padx=5, pady=5)
+            param_group.configure(labelwidget=tk.Label(param_group, text=" Model Parameters ", font=("", 10, "bold")))
+
+            for key, info in module_settings.items():
+                frame = ttk.Frame(param_group)
+                frame.pack(fill="x", padx=5, pady=5)
+
+                display_name = info.get('name', key)
+                ttk.Label(frame, text=f"{display_name}:").grid(row=0, column=0, sticky="w", padx=5)
+
+                current_val = self.model_settings.get(key, info["default"])
+
+                ent = ttk.Entry(frame, width=15)
+                ent.insert(0, str(current_val))
+                ent.grid(row=0, column=1, sticky="ew", padx=5)
+
+                default_val = info["default"]
+                ttk.Button(frame, text="Default", command=lambda e=ent, d=default_val: reset_ent(e, d)).grid(row=0, column=2, padx=5)
+
+                frame.columnconfigure(1, weight=1)
+                param_widgets[key] = ent
 
         def save():
-            for key, widgets in weights_entries.items():
+            for key, widgets in weights_widgets.items():
                 current_url = widgets["url_widget"].get().strip()
                 current_path = widgets["path_widget"].get().strip()
 
                 self.weights_overrides[f"{key}_url"] = current_url
                 self.weights_overrides[f"{key}_path"] = current_path
                 self.weights_overrides[key] = current_path if current_path else current_url
+
+            for key, widget in param_widgets.items():
+                dtype = module_settings[key]["type"]
+                self.model_settings[key] = dtype(widget.get())
             popup.destroy()
 
         ttk.Button(popup, text="Save Configuration", command=save).pack(padx=5, pady=5)
@@ -915,20 +951,19 @@ class ITPTGUI:
             log_win.update_status("Model loading...")
 
             model = get_model(model_name)
-            model.load(
-                cropping_model_weights_path_or_url=self.weights_overrides.get("Cropping Model"),
-                denoising_model_weights_path_or_url=self.weights_overrides.get("Denoising Model"),
-                nodesdetection_model_weights_path_or_url=self.weights_overrides.get("Nodes Detection Model")
-            )
-
-            log_win.update_status("Conversion...")
 
             input_img = self.apply_mask(self.preview_image, self.brush_mask)
 
             if self.current_model_module is None:
+                model.load()
+
+                log_win.update_status("Conversion...")
                 newick = model.convert(np.array(input_img))
                 newick_str = newick.to_string()
             else:
+                self.current_model_module.load_model(model, self.weights_overrides)
+
+                log_win.update_status("Conversion...")
                 for step in self.current_model_steps:
                     step.enabled = self.step_vars[step.name].get()
 
@@ -943,10 +978,10 @@ class ITPTGUI:
 
                     current_texts = scale_texts(self.texts, scale_width=1.0/img_w, scale_height=1.0/img_h)
                     points_norm = scale_points(self.points, scale_width=1.0/img_w, scale_height=1.0/img_h)
-                    newick_by_image = model.build_newick([points_norm], texts_by_image=[current_texts])
+                    newick_by_image = self.current_model_module.build_newick(model, [points_norm], texts_by_image=[current_texts], settings=self.model_settings)
                     newick_str = newick_by_image[0].to_string()
                 else:
-                    newick, points, texts = self.current_model_module.run_steps(model, np.array(input_img), steps=self.current_model_steps)
+                    newick, points, texts = self.current_model_module.run_steps(model, np.array(input_img), steps=self.current_model_steps, settings=self.model_settings)
 
                     self.points = scale_points(points, scale_width=img_w, scale_height=img_h)
 

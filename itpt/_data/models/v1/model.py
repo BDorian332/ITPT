@@ -59,7 +59,7 @@ class v1(Model):
 
         self.textsDetector_model = get_textsDetector_model()
 
-        print("Models loaded")
+        print("All sub-models loaded")
         self._loaded = True
 
     def convert(self, path_or_array):
@@ -114,7 +114,7 @@ class v1(Model):
         print(f"Number of texts per image: {[len(t) for t in texts_by_image]}")
         return texts_by_image
 
-    def build_newick(self, nodes_by_image, texts_by_image=None):
+    def build_newick(self, nodes_by_image, texts_by_image=None, margin=5, max_distance=20):
         print("Building Newick for each image...")
 
         if not texts_by_image:
@@ -122,7 +122,7 @@ class v1(Model):
 
         newick_by_image = []
         for i, (nodes, texts) in enumerate(zip(nodes_by_image, texts_by_image), 0):
-            newick = build_newick(nodes, texts=texts)
+            newick = build_newick(nodes, texts=texts, margin=margin, max_distance=max_distance)
             print(f"Image {i}: {newick.to_string()}")
             newick_by_image.append(newick)
 
