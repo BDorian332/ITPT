@@ -1,9 +1,11 @@
 from __future__ import annotations
 
-from typing import Any, List
+from typing import Any
 
 from gui_vctk.core.models import Point, PointType
 from gui_vctk.core.settings_state import SETTINGS
+
+from gui_vctk.core.correction.corrector import correction as apply_correction
 
 _model = None
 _model_version = None
@@ -61,11 +63,14 @@ def _guess_bbox_scale(texts: list[Any], W: int, H: int) -> tuple[float, float]:
 def _ensure_model_loaded():
     global _model, _model_version
 
-    if _model is not None and _model_version == SETTINGS.version:
+    # si tu gardes version dans SETTINGS, on respecte; sinon ça restera "v1"
+    version = getattr(SETTINGS, "version", "v1")
+
+    if _model is not None and _model_version == version:
         return
 
     # (re)load model if version changed
-    if SETTINGS.version == "v1":
+    if version == "v1":
         from itpt._data.models.v1.model import v1 as Model
     else:
         # placeholder: v0 pas encore branché
@@ -73,10 +78,62 @@ def _ensure_model_loaded():
 
     _model = Model()
     _model.load()
-    _model_version = SETTINGS.version
+    _model_version = version
 
 
-def run_pipeline(image_path: str) -> List[Point]:
+def _apply_correction_to_points(points: list[Point], img_w: int) -> list[Point]:
+    """
+    Convertit list[Point] GUI -> (nodes,corners,leaves) au format corrector (x:int, y:int, score:float),
+    applique correction(), puis reconvertit en list[Point] GUI.
+
+    Labels TIP:
+        - on conserve les labels existants en les réassignant par ordre Y après correction.
+        - si plus de leaves que de labels: tipN
+    """
+    nodes: list[tuple[int, int, float]] = []
+    corners: list[tuple[int, int, float]] = []
+    leaves: list[tuple[int, int, float]] = []
+
+    # labels existants (ordre vertical)
+    old_tip_labels = [p.label for p in sorted([p for p in points if p.ptype == PointType.TIP], key=lambda p: p.y)]
+
+    for p in points:
+        x = int(round(p.x))
+        y = int(round(p.y))
+        score = 1.0
+
+        if p.ptype == PointType.CORNER:
+            corners.append((x, y, score))
+        elif p.ptype == PointType.TIP:
+            leaves.append((x, y, score))
+        else:
+            nodes.append((x, y, score))
+
+    nodes2, corners2, leaves2 = apply_correction(
+        nodes=nodes,
+        corners=corners,
+        leaves=leaves,
+        img_width=int(img_w),
+        printlog=False,
+    )
+
+    out: list[Point] = []
+
+    for x, y, _s in nodes2:
+        out.append(Point(float(x), float(y), PointType.NODE, None))
+
+    for x, y, _s in corners2:
+        out.append(Point(float(x), float(y), PointType.CORNER, None))
+
+    leaves2_sorted = sorted(leaves2, key=lambda t: t[1])
+    for i, (x, y, _s) in enumerate(leaves2_sorted):
+        lbl = old_tip_labels[i] if i < len(old_tip_labels) and old_tip_labels[i] else f"tip{i+1}"
+        out.append(Point(float(x), float(y), PointType.TIP, lbl))
+
+    return out
+
+
+def run_pipeline(image_path: str) -> list[Point]:
     _ensure_model_loaded()
 
     # 1) Load & preprocess
@@ -101,7 +158,7 @@ def run_pipeline(image_path: str) -> List[Point]:
     raw_pts = nodes_by_image[0] if nodes_by_image else []
     sx, sy = _guess_scale(raw_pts, W, H)
 
-    out: List[Point] = []
+    out: list[Point] = []
 
     for p in raw_pts:
         ptype = _safe_get(p, "type", "node")
@@ -131,10 +188,8 @@ def run_pipeline(image_path: str) -> List[Point]:
 
         out.append(Point(cx, cy, PointType.TIP, txt if txt else None))
 
-    # 7) Post-processing placeholder (pas encore implémenté)
-    if SETTINGS.post_clean:
-        pass
-    if SETTINGS.post_merge:
-        pass
+    # 7) Post-processing: correction (si cochée dans Settings)
+    if getattr(SETTINGS, "correction", False):
+        out = _apply_correction_to_points(out, img_w=W)
 
     return out
