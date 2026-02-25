@@ -158,6 +158,8 @@ class Newick:
         if not v1 and not v2: return 100.0
         if not v1 or not v2: return 0.0
 
+        size_penalty = min(len(v1), len(v2)) / max(len(v1), len(v2))
+
         # Interpolation
         v1_interp = np.interp(np.linspace(0, 1, 50), np.linspace(0, 1, len(v1)), v1)
         v2_interp = np.interp(np.linspace(0, 1, 50), np.linspace(0, 1, len(v2)), v2)
@@ -166,7 +168,7 @@ class Newick:
             calculate_similarity(p1, p2)
             for p1, p2 in zip(v1_interp, v2_interp)
         ]
-        return float(np.mean(similarities))
+        return float(np.mean(similarities) * size_penalty)
 
 def process_no_root_node(
     node: Point,
