@@ -14,45 +14,57 @@ However, by being hosted on GitHub, this repository is subject to the [GitHub Te
 
 ```
 root/
+    dev/
+        _datasets_generation/
+            ...
+        _detectron/
+            ...
+        _evaluation/
+            ...
+        _heatmap/
+            ...
+        _notebooks/
+            ...
+        generators/
+            __init__.py
+            generator_from_notebook.py
+    gui_vctk/
+        __init__.py
+        main.py
+        ...
+    gui_vtk/
+        __init__.py
+        main.py
+        ...
     itpt/
         __init__.py
+        _data/
+            models/
+                ...
         core/
             __init__.py
             branches.py
             model.py
             newick.py
+            utils.py
         models/
             __init__.py
             registry.py
-        _data/
-            models/
-                ...
-    gui_vtk/
-	    __init__.py
-        main.py
-	    ...
-    gui_vctk/
-        __init__.py
-        main.py
-        ...
-    dev/
-	    _datasets/
-		    ...
-        _notebooks/
-		    ...
-        generators/
-            __init__.py
-            generator_from_notebook.py
+    media/
+        demo.gif
     sandbox/
         main.py
         ...
     tools/
-	    __init__.py
+        __init__.py
         build.py
         clean.py
         generate_models.py
         run.py
+    poetry.lock
     pyproject.toml
+    README.md
+    RELEASE.md
 ```
 
 ## Usage
