@@ -1,5 +1,6 @@
 import re
 import numpy as np
+import copy
 from typing import List, Tuple, Optional, Dict, Any
 from .utils import Point, get_nearest_point, get_nearest_label, reset_points, scale_points, scale_texts, align_points_x, calculate_similarity
 
@@ -116,19 +117,22 @@ class Newick:
         return float(lam), float(mu), float(r)
 
     def compute_similarity_by_path(self, other: "Newick") -> float:
-        paths1 = self.get_all_path_lengths()
-        paths2 = other.get_all_path_lengths()
+        self_c = copy.deepcopy(self)
+        other_c = copy.deepcopy(other)
 
-        v1_raw = sorted(p[1] for p in self.get_all_path_lengths())
-        v2_raw = sorted(p[1] for p in other.get_all_path_lengths())
+        self_c.normalize()
+        other_c.normalize()
 
-        max_v1_raw = max(v1_raw)
-        max_v2_raw = max(v2_raw)
-        v1 = [x / max_v1_raw for x in v1_raw]
-        v2 = [x / max_v2_raw for x in v2_raw]
+        paths1 = self_c.get_all_path_lengths()
+        paths2 = other_c.get_all_path_lengths()
+
+        v1 = sorted(p[1] for p in paths1)
+        v2 = sorted(p[1] for p in paths2)
 
         if not v1 and not v2: return 100.0
         if not v2 or not v2: return 0.0
+
+        size_penalty = min(len(v1), len(v2)) / max(len(v1), len(v2))
 
         # Interpolation
         v1_interp = np.interp(np.linspace(0, 1, 100), np.linspace(0, 1, len(v1)), v1)
@@ -138,7 +142,6 @@ class Newick:
             calculate_similarity(p1, p2)
             for p1, p2 in zip(v1_interp, v2_interp)
         ]
-        size_penalty = min(len(v1_raw), len(v2_raw)) / max(len(v1_raw), len(v2_raw))
         return float(np.mean(similarities) * size_penalty)
 
     def get_depth_profile(self):
@@ -152,8 +155,14 @@ class Newick:
         return sorted(depths)
 
     def compute_similarity_by_depth(self, other: "Newick") -> float:
-        v1 = self.get_depth_profile()
-        v2 = other.get_depth_profile()
+        self_c = copy.deepcopy(self)
+        other_c = copy.deepcopy(other)
+
+        self_c.normalize()
+        other_c.normalize()
+
+        v1 = self_c.get_depth_profile()
+        v2 = other_c.get_depth_profile()
 
         if not v1 and not v2: return 100.0
         if not v1 or not v2: return 0.0
@@ -497,17 +506,20 @@ def parse_newick_string(newick_str: str) -> Newick:
         return Newick(internals=[parse_node(newick_str)])
 
 def compare_newick_phylogeny(ref: Newick, other: Newick, target_max_path_length: float = 1.0, birth_death_eps: float = 0.5) -> Dict[str, Any]:
+    ref_c = copy.deepcopy(ref)
+    other_c = copy.deepcopy(other)
+
     for tree in [ref, other]:
         tree.normalize()
         tree.scale_lengths(target_max_path_length)
 
     # Pure Birth (Yule)
-    y1 = ref.estimate_yule_lambda()
-    y2 = other.estimate_yule_lambda()
+    y1 = ref_c.estimate_yule_lambda()
+    y2 = other_c.estimate_yule_lambda()
 
     # Birth Death
-    lam1, mu1, r1 = ref.estimate_birth_death(eps=birth_death_eps)
-    lam2, mu2, r2 = other.estimate_birth_death(eps=birth_death_eps)
+    lam1, mu1, r1 = ref_c.estimate_birth_death(eps=birth_death_eps)
+    lam2, mu2, r2 = other_c.estimate_birth_death(eps=birth_death_eps)
 
     return {
         "pure_birth_yule": {
