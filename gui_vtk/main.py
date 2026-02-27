@@ -510,10 +510,10 @@ class ITPTGUI:
         path = self.input_entry.get()
         if path == self.current_path:
             return
+        self.current_path = path
 
         try:
-            self.current_path = path
-            self.preview_image = Image.open(path).convert("RGB")
+            self.preview_image = Image.open(self.current_path).convert("RGB")
             self.zoomed_image = self.preview_image
             self.brush_mask = Image.new("1", self.preview_image.size, 0)
             self.image_updated = False
@@ -711,6 +711,9 @@ class ITPTGUI:
         return None
 
     def start_interaction(self, event):
+        if self.preview_image == None:
+            return
+
         ctrl_pressed = (event.state & 0x0004) != 0
         self.drag_start = (event.x, event.y)
 

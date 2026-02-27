@@ -40,7 +40,7 @@ jobs:
         run: |
           poetry run itpt-build --lib
           for gui_ver in vtk; do
-            poetry run itpt-build --gui $gui_ver --debug
+            poetry run itpt-build --gui $gui_ver
           done
 
       - name: Prepare final assets
