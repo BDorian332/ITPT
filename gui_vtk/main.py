@@ -360,6 +360,8 @@ class ITPTGUI:
                 self.model_settings[key] = dtype(widget.get())
             popup.destroy()
 
+            self.redraw_preview(force=True)
+
         ttk.Button(popup, text="Save Configuration", command=save).pack(padx=5, pady=5)
 
     # ---------- Events ----------
@@ -608,6 +610,7 @@ class ITPTGUI:
         )
 
         # Draw segments
+        if force: self.update_segments()
         for seg in self.segments:
             (x1, y1), (x2, y2) = seg
             sx1, sy1 = self.image_to_screen(Point(x1, y1))
@@ -897,7 +900,10 @@ class ITPTGUI:
         img_h = self.preview_image.height
 
         points_norm = scale_points(self.points, scale_width=1.0/img_w, scale_height=1.0/img_h)
-        segments = build_segments(points_norm)
+        margin = float(self.model_settings.get("margin", 5))
+
+        segments = build_segments(points_norm, margin=margin)
+
         self.segments = segments if segments else []
         self.segments = scale_segments(self.segments, scale_width=img_w, scale_height=img_h)
 
