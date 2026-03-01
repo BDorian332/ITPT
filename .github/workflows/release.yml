@@ -39,7 +39,7 @@ jobs:
         shell: bash
         run: |
           poetry run itpt-build --lib
-          for gui_ver in vtk; do
+          for gui_ver in vtk vctk; do
             poetry run itpt-build --gui $gui_ver
           done
 
@@ -76,7 +76,8 @@ jobs:
       - name: Upload to GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          files: final_assets/**/*
+          tag_name: ${{ github.ref_name }}
+          files: final_assets/*
           body_path: RELEASE.md
           append_body: false
           prerelease: true
